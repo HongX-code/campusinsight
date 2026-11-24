@@ -1,0 +1,113 @@
+{
+  "settings": {
+    "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0 Safari/537.36",
+    "timeout": 12,
+    "retry": 2,
+    "delay": 0.8,
+    "max_pages": 2,
+    "max_items": 15,
+    "allowed_domains": ["edu.cn", "ac.cn"],
+    "concurrency": 1
+  },
+  "note": "采集源配置：新增高校只需追加一条 source。list/detail 段留空则由内置通用规则自动探测；某站点改版且通用规则失效时，只改这里的选择器，不改代码。",
+  "sources": [
+    {
+      "id": "whut_gd_yjsgl",
+      "name": "武汉理工大学-研究生管理通知公告",
+      "url": "http://gd.whut.edu.cn/yjsgl/tzgg/",
+      "category": "其他",
+      "enabled": true,
+      "list_selector": "ul.art-list > li",
+      "detail": {
+        "title_selector": ".content-detail h2, h2",
+        "date_selector": ".art_info",
+        "content_selector": "#art_content, .art_text, .TRS_Editor"
+      }
+    },
+    {
+      "id": "whut_gd_py",
+      "name": "武汉理工大学-研究生培养通知公告",
+      "url": "http://gd.whut.edu.cn/py/tzgg/",
+      "category": "其他",
+      "enabled": true,
+      "list_selector": "ul.art-list > li",
+      "detail": {
+        "title_selector": ".content-detail h2, h2",
+        "date_selector": ".art_info",
+        "content_selector": "#art_content, .art_text, .TRS_Editor"
+      }
+    },
+    {
+      "id": "whut_gd_xw",
+      "name": "武汉理工大学-学位管理通知公告",
+      "url": "http://gd.whut.edu.cn/xw/tzgg/",
+      "category": "其他",
+      "enabled": true,
+      "list_selector": "ul.art-list > li",
+      "detail": {
+        "title_selector": ".content-detail h2, h2",
+        "date_selector": ".art_info",
+        "content_selector": "#art_content, .art_text, .TRS_Editor"
+      }
+    },
+    {
+      "id": "whut_gd_zs",
+      "name": "武汉理工大学-研究生招生通知公告",
+      "url": "http://gd.whut.edu.cn/zs/tzgg/",
+      "category": "其他",
+      "enabled": true,
+      "list_selector": "ul.art-list > li",
+      "detail": {
+        "title_selector": ".content-detail h2, h2",
+        "date_selector": ".art_info",
+        "content_selector": "#art_content, .art_text, .TRS_Editor"
+      }
+    },
+    {
+      "id": "whut_news_zhxw",
+      "name": "武汉理工大学-新闻经纬·综合新闻",
+      "url": "https://news.whut.edu.cn/zhxw/",
+      "category": "校园活动",
+      "enabled": true,
+      "list_selector": "ul.newslist > li",
+      "detail": {
+        "title_selector": "h2",
+        "content_selector": ".view"
+      }
+    },
+    {
+      "id": "whut_news_xsdt",
+      "name": "武汉理工大学-新闻经纬·学术动态",
+      "url": "https://news.whut.edu.cn/xsdt/index.shtml",
+      "category": "科研项目",
+      "enabled": true,
+      "list_selector": "ul.newslist > li",
+      "detail": {
+        "title_selector": "h2",
+        "content_selector": ".view"
+      }
+    },
+    {
+      "id": "whut_news_lgzx",
+      "name": "武汉理工大学-新闻经纬·理工资讯",
+      "url": "https://news.whut.edu.cn/lgzx/",
+      "category": "科研项目",
+      "enabled": true,
+      "list_selector": "ul.newslist > li",
+      "detail": {
+        "title_selector": "h2",
+        "content_selector": ".view"
+      }
+    },
+    {
+      "id": "demo_other_university",
+      "name": "示例-其他高校通知公告（通用规则）",
+      "url": "https://www.example.edu.cn/tzgg/",
+      "category": "其他",
+      "enabled": false,
+      "list_selector": "",
+      "detail": {},
+      "note": "跨校复用的模板：填上目标高校通知公告栏目地址即可，选择器留空走通用探测。"
+    }
+  ]
+}

@@ -1,0 +1,513 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<meta name="theme-color" content="#F6F8FC" />
+<meta name="description" content="高校智讯 CampusInsight：基于华为云的高校通知智能解析与个性化服务平台，让学生看懂通知、不错过时限，并让每个 AI 结论都能回到原文核对。" />
+<meta name="mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="default" />
+<meta name="apple-mobile-web-app-title" content="高校智讯" />
+<meta name="format-detection" content="telephone=no" />
+<link rel="manifest" href="/manifest.webmanifest" />
+<link rel="icon" type="image/png" sizes="192x192" href="/static/icons/icon-192.png" />
+<link rel="apple-touch-icon" href="/static/icons/icon-192.png" />
+<title>高校智讯 CampusInsight · 让校园信息，从「看见」到「看懂」，再到「行动」</title>
+<link rel="stylesheet" href="/static/css/style.css" />
+</head>
+<body>
+
+<div class="offline-bar" id="offlineBar" hidden>
+  <svg><use href="#i-cloud"/></svg>
+  <span>当前处于离线状态：已缓存页面仍可浏览，解析与 AI 问答需联网。</span>
+</div>
+
+<!-- 线性图标 sprite：统一 Lucide 风格，不使用 Emoji -->
+<svg style="position:absolute;width:0;height:0;overflow:hidden" aria-hidden="true">
+  <symbol id="i-home" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V21h14V9.5"/><path d="M9.5 21v-6h5v6"/></symbol>
+  <symbol id="i-notice" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 8h8M8 12h8M8 16h5"/></symbol>
+  <symbol id="i-match" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1.4" fill="currentColor" stroke="none"/></symbol>
+  <symbol id="i-spark" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="m12 2 1.9 5.9L20 10l-6.1 2.1L12 18l-1.9-5.9L4 10l6.1-2.1L12 2Z"/><path d="m19 16 .7 2.1L22 19l-2.3.9L19 22l-.7-2.1L16 19l2.3-.9L19 16Z"/></symbol>
+  <symbol id="i-task" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="16" height="16" rx="3"/><path d="m8 12 2.6 2.6L16 9.2"/></symbol>
+  <symbol id="i-chart" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3 20h18"/><path d="M6 20v-6M11 20V5M16 20v-9M21 20v-4"/></symbol>
+  <symbol id="i-cloud" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v11m0 0 4-4m-4 4-4-4"/><path d="M4 16v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3"/></symbol>
+  <symbol id="i-search" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="m16.5 16.5 4 4"/></symbol>
+  <symbol id="i-bell" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8a6 6 0 1 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9"/><path d="M10 21h4"/></symbol>
+  <symbol id="i-help" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M9.5 9.2a2.6 2.6 0 1 1 3.6 2.4c-.8.4-1.1 1-1.1 1.9"/><path d="M12 17.2h.01"/></symbol>
+  <symbol id="i-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14m-6-6 6 6-6 6"/></symbol>
+  <symbol id="i-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 6 6 6-6 6"/></symbol>
+  <symbol id="i-clock" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3.2 2"/></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12 4.5 4.5L19 7"/></symbol>
+  <symbol id="i-shield" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2 4 5v6c0 5 3.4 9.3 8 11 4.6-1.7 8-6 8-11V5l-8-3Z"/><path d="m9 12 2 2 4-4"/></symbol>
+  <symbol id="i-file" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2h8l4 4v16H6z"/><path d="M14 2v5h4M9 12h6M9 16h6"/></symbol>
+  <symbol id="i-plus" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></symbol>
+  <symbol id="i-user" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 3.6-6.5 8-6.5s8 2.5 8 6.5"/></symbol>
+</svg>
+
+<div class="layout">
+  <aside class="sidebar">
+    <div class="brand">
+      <div class="brand-mark">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
+             stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M12 3.4 20.6 12 12 20.6 3.4 12 12 3.4Z"/>
+          <circle cx="12" cy="12" r="2.4" fill="currentColor" stroke="none"/>
+        </svg>
+      </div>
+      <div class="brand-text">
+        <strong>高校智讯</strong>
+        <span>CampusInsight</span>
+      </div>
+    </div>
+
+    <nav class="nav" id="nav">
+      <div class="nav-group">
+        <div class="nav-group-title">智能工作台</div>
+        <button class="nav-item active" data-view="home" title="首页">
+          <span class="ico"><svg><use href="#i-home"/></svg></span><span class="label">首页</span>
+        </button>
+        <button class="nav-item" data-view="notices" title="通知中心">
+          <span class="ico"><svg><use href="#i-notice"/></svg></span><span class="label">通知中心</span>
+        </button>
+        <button class="nav-item" data-view="match" title="我的匹配">
+          <span class="ico"><svg><use href="#i-match"/></svg></span><span class="label">我的匹配</span>
+        </button>
+        <button class="nav-item" data-view="qa" title="AI 助手">
+          <span class="ico"><svg><use href="#i-spark"/></svg></span><span class="label">AI 助手</span>
+        </button>
+        <button class="nav-item" data-view="tasks" title="我的任务">
+          <span class="ico"><svg><use href="#i-task"/></svg></span><span class="label">我的任务</span>
+        </button>
+      </div>
+
+      <div class="nav-group">
+        <div class="nav-group-title">信息治理</div>
+        <button class="nav-item" data-view="dashboard" title="数据总览">
+          <span class="ico"><svg><use href="#i-chart"/></svg></span><span class="label">数据总览</span>
+        </button>
+        <button class="nav-item" data-view="sources" title="采集中心">
+          <span class="ico"><svg><use href="#i-cloud"/></svg></span><span class="label">采集中心</span>
+        </button>
+      </div>
+    </nav>
+
+      <div class="sidebar-foot">
+        <div class="engine-box" id="engineBox">
+          <div class="engine-row"><span><i class="engine-dot"></i>解析引擎</span><b id="engineName">加载中…</b></div>
+        </div>
+      <p class="foot-note">华为 ICT 大赛 · 赛题 1<br/>基于华为云产品打造 AI 创新应用</p>
+    </div>
+  </aside>
+
+  <main class="main">
+    <header class="topbar">
+      <div class="topbar-title">
+        <h1 id="viewTitle">智能工作台</h1>
+        <p id="viewDesc">让校园信息，从「看见」到「看懂」，再到「行动」</p>
+      </div>
+
+      <div class="topbar-search">
+        <span class="s-ico"><svg><use href="#i-search"/></svg></span>
+        <input class="top-search-input" id="globalSearch" placeholder="搜索通知、竞赛、奖学金……" autocomplete="off" />
+      </div>
+
+      <div class="topbar-actions">
+        <button class="icon-btn mobile-only" id="btnMobileSearch" title="搜索">
+          <svg><use href="#i-search"/></svg>
+        </button>
+        <button class="icon-btn" id="btnBell" title="查看截止提醒">
+          <svg><use href="#i-bell"/></svg><span class="badge" id="bellBadge" style="display:none">0</span>
+        </button>
+        <button class="icon-btn" id="btnHelp" title="使用帮助"><svg><use href="#i-help"/></svg></button>
+        <button class="user-chip" id="userChip" type="button" title="登录 / 切换角色账号">
+          <span class="avatar-sm" id="topAvatar">·</span>
+          <span class="u-name" id="topUserName">登录</span>
+          <svg class="u-caret"><use href="#i-chevron"/></svg>
+        </button>
+        <button class="btn ghost" id="btnBatchAnalyze">批量解析</button>
+        <button class="btn primary" id="btnAddNotice"><svg><use href="#i-plus"/></svg>录入通知</button>
+      </div>
+    </header>
+
+    <div class="mobile-search" id="mobileSearchBar" hidden>
+      <span class="s-ico"><svg><use href="#i-search"/></svg></span>
+      <input class="top-search-input" id="mobileSearchInput" placeholder="搜索通知、竞赛、奖学金……"
+             autocomplete="off" enterkeyhint="search" />
+      <button class="icon-btn" id="mobileSearchClose" title="关闭搜索">✕</button>
+    </div>
+
+    <div class="scroll">
+
+      <!-- ============ 首页 · 智能工作台 ============ -->
+      <section class="view active" id="view-home">
+        <div class="container">
+          <div class="greeting">
+            <h2 id="homeGreeting">你好，欢迎回来</h2>
+            <p>为你整理了待办、机会与近期的截止提醒。</p>
+          </div>
+
+          <!-- AI 洞察 Hero（数据由 renderHome 实时填充） -->
+          <div id="homeHero"></div>
+
+          <!-- 4 个 Stats Card -->
+          <div class="stat-grid" id="homeStats"></div>
+
+          <div class="section-head">
+            <div class="section-title">推荐给你的机会 <span class="sub">依据你的专业、年级与兴趣，附逐条理由</span></div>
+            <button class="section-more" onclick="switchView('match')">查看全部 <svg><use href="#i-chevron"/></svg></button>
+          </div>
+
+          <div class="home-grid">
+            <div class="opp-list" id="homeOpps"></div>
+            <div>
+              <div class="card">
+                <div class="card-head"><h2>即将截止</h2><span class="hint">未来 7 天</span></div>
+                <div class="due-list" id="homeDue"></div>
+              </div>
+              <div class="trust-card">
+                <div class="trust-head"><svg><use href="#i-shield"/></svg>为什么可以相信这些结果</div>
+                <div class="pipeline">
+                  <div class="pipe-node"><span class="pipe-dot">1</span><div><div class="pipe-label">公开站点采集</div><div class="pipe-desc">7 个栏目 · 域名白名单 · 双闸去重</div></div></div>
+                  <div class="pipe-node ai"><span class="pipe-dot">2</span><div><div class="pipe-label">AI 结构化解析</div><div class="pipe-desc">14 类字段 · 新闻稿不抽报名类字段</div></div></div>
+                  <div class="pipe-node"><span class="pipe-dot">3</span><div><div class="pipe-label">规则校验 C1—C9</div><div class="pipe-desc">时间倒挂 / 证据失配 / 字段泄漏</div></div></div>
+                  <div class="pipe-node ai"><span class="pipe-dot">4</span><div><div class="pipe-label">原文证据绑定</div><div class="pipe-desc">点击「原文依据」可在正文中定位</div></div></div>
+                  <div class="pipe-node"><span class="pipe-dot">5</span><div><div class="pipe-label">个性化匹配与行动</div><div class="pipe-desc">三档结论 · 逐条理由 · 一键加入任务</div></div></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============ 通知中心 ============ -->
+      <section class="view" id="view-notices">
+        <div class="container">
+          <div class="chip-row" id="noticeQuick">
+            <button class="chip active" data-quick="all">全部通知</button>
+            <button class="chip" data-quick="notice">事务通知</button>
+            <button class="chip" data-quick="publicity">公示公告</button>
+            <button class="chip" data-quick="news">新闻资讯</button>
+            <button class="chip" data-quick="needs_review">待复核</button>
+          </div>
+          <div class="chip-row" id="categoryChips"></div>
+          <div class="toolbar">
+            <input class="input search" id="noticeSearch" placeholder="搜索标题或正文关键词，如：奖学金、建模、支教" />
+            <select class="input select" id="noticeCategory"><option value="">全部分类</option></select>
+            <select class="input select" id="noticeGenre">
+              <option value="">全部文体</option>
+              <option value="notice">事务通知</option>
+              <option value="publicity">公示公告</option>
+              <option value="news">新闻资讯</option>
+            </select>
+            <select class="input select" id="noticeReview">
+              <option value="">全部状态</option>
+              <option value="needs_review">待复核</option>
+              <option value="reviewed">已复核</option>
+              <option value="unparsed">未解析</option>
+            </select>
+          </div>
+          <div class="notice-list" id="noticeList"></div>
+          <div class="pager" id="noticePager"></div>
+        </div>
+      </section>
+
+      <!-- ============ 采集中心 ============ -->
+      <section class="view" id="view-sources">
+        <div class="container">
+          <div class="crawl-panel">
+            <div class="card crawl-src">
+              <div class="card-head"><h2>采集源</h2><span class="hint">公开高校站点 · 域名白名单</span></div>
+              <div class="src-list" id="srcList"><div class="empty">加载中…</div></div>
+              <div class="crawl-opts">
+                <label class="field-inline"><span>每源条数</span>
+                  <input class="input tiny" id="crawlLimit" type="number" value="6" min="1" max="30" /></label>
+                <label class="field-inline"><span>翻页</span>
+                  <input class="input tiny" id="crawlPages" type="number" value="1" min="1" max="5" /></label>
+                <label class="field-inline chk"><input type="checkbox" id="crawlAnalyze" /><span>入库后解析</span></label>
+              </div>
+              <label class="field-inline chk" style="margin-top:8px"><input type="checkbox" id="crawlIncremental" checked /><span>只看新内容（增量抓取）</span></label>
+              <button class="btn primary wide" id="btnCrawl">开始抓取</button>
+              <p class="hint" id="crawlStat" style="margin-top:10px">已收录的通知会自动跳过并继续翻页找新内容；如需查看全部可关闭「只看新内容」。</p>
+            </div>
+
+            <div class="card crawl-result">
+              <div class="card-head"><h2>抓取结果</h2><span class="hint" id="crawlCount">尚未抓取</span></div>
+              <div class="crawl-table" id="crawlTable"><div class="empty">选择左侧栏目后点击「开始抓取」</div></div>
+              <div class="crawl-foot">
+                <label class="chk"><input type="checkbox" id="crawlAll" /><span>全选新条目</span></label>
+                <button class="btn ghost" id="btnCrawlImport" disabled>导入选中</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============ 我的匹配 ============ -->
+      <section class="view" id="view-match">
+        <div class="container">
+          <div class="toolbar">
+            <div class="match-identity" id="matchIdentity" title="在右上角头像处登录或切换角色账号">
+              <svg><use href="#i-user"/></svg>
+              <span id="matchIdentityName">未登录</span>
+            </div>
+            <div class="seg" id="matchFilter">
+              <button class="seg-btn active" data-level="">全部</button>
+              <button class="seg-btn" data-level="match">符合</button>
+              <button class="seg-btn" data-level="maybe">可能符合</button>
+              <button class="seg-btn" data-level="no">暂不符合</button>
+            </div>
+            <span class="hint" id="matchSummary"></span>
+          </div>
+          <div class="profile-card" id="profileCard"></div>
+          <div class="match-list" id="matchList"></div>
+        </div>
+      </section>
+
+      <!-- ============ AI 助手：问答 / 解析实验室 ============ -->
+      <section class="view" id="view-qa">
+        <div class="qa-wrap">
+          <div class="qa-hero">
+            <div class="ai-mark"><svg><use href="#i-spark"/></svg></div>
+            <h2>AI 校园信息助手</h2>
+            <p>回答只基于已收录通知，调用结构化字段与用户画像，并给出原文出处。</p>
+          </div>
+
+          <div class="seg qa-tabs" id="qaTabs" role="tablist" aria-label="AI 助手功能页签">
+            <button class="seg-btn active" data-tab="chat" role="tab" aria-selected="true">智能问答</button>
+            <button class="seg-btn" data-tab="lab" role="tab" aria-selected="false">AI 解析实验室</button>
+          </div>
+
+          <!-- 页签 1：智能问答 -->
+          <div class="qa-pane" id="qaPaneChat">
+            <!-- 示例问题逐条经过自检回归：都能从已收录通知中给出带原文依据的确切答案 -->
+            <div class="quick-hint"><svg><use href="#i-spark"/></svg>点击下面的常见问题，或自己在下方输入</div>
+            <div class="quick-grid" id="quickQuestions">
+              <button class="quick-card" data-q="有哪些学科竞赛可以报名？"><span class="q-ico"><svg><use href="#i-match"/></svg></span>可报名的学科竞赛</button>
+              <button class="quick-card" data-q="数学建模竞赛需要提交哪些材料？"><span class="q-ico"><svg><use href="#i-file"/></svg></span>建模竞赛要交什么</button>
+              <button class="quick-card" data-q="国家奖学金的申请条件是什么？"><span class="q-ico"><svg><use href="#i-search"/></svg></span>国奖申请条件</button>
+              <button class="quick-card" data-q="华为ICT大赛的报名截止时间？"><span class="q-ico"><svg><use href="#i-clock"/></svg></span>华为ICT截止日期</button>
+              <button class="quick-card" data-q="近期有哪些通知即将截止？"><span class="q-ico"><svg><use href="#i-clock"/></svg></span>近期截止事项</button>
+              <button class="quick-card" data-q="国家励志奖学金需要准备什么材料？"><span class="q-ico"><svg><use href="#i-file"/></svg></span>励志奖学金材料</button>
+            </div>
+            <div class="qa-conv" id="qaConv">
+              <div class="qa-head">
+                <div class="qa-head-id">
+                  <span class="ai-mark xs"><svg><use href="#i-spark"/></svg></span>
+                  <div class="qa-head-txt">
+                    <strong>高校智讯 AI 助手</strong>
+                    <span id="chatStatus">正在读取引擎状态…</span>
+                  </div>
+                </div>
+                <div class="qa-head-actions">
+                  <span class="ai-status-dot" id="chatDot"></span>
+                  <button class="btn ghost sm" id="btnAiProbe">测试连接</button>
+                  <button class="btn ghost sm" id="btnChatClear">清空对话</button>
+                </div>
+              </div>
+              <div class="qa-chat card" id="qaChat">
+                <div class="msg bot">
+                  <div class="bubble">
+                    我是高校智讯助手，回答<strong>只基于已收录的通知</strong>，并给出原文出处。<br/>
+                    可以问我报名截止时间、所需材料、申请条件等；我会在答案下方列出<strong>结构化要点</strong>与可核对依据。<br/>
+                    例如：数学建模竞赛需要提交哪些材料？
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="qa-input">
+              <input class="input" id="qaInput" placeholder="输入你的问题，回车发送"
+                     autocomplete="off" enterkeyhint="send" />
+              <button class="btn primary" id="qaSend">发送</button>
+            </div>
+          </div>
+
+          <!-- 页签 2：AI 解析实验室（不入库，展示四层保护与字段证据） -->
+          <div class="qa-pane" id="qaPaneLab" hidden>
+            <div class="card lab-note">
+              <div class="lab-note-head">
+                <span class="ai-mark sm"><svg><use href="#i-shield"/></svg></span>
+                <div>
+                  <strong>粘贴一段通知，现场看 AI 如何被约束</strong>
+                  <p>不写入数据库、不改动已收录通知。每个字段都要能在原文定位，最后统一经过 C1—C9 规则校验；
+                     模型不可用会降级，且降级原因在结果里如实显示。</p>
+                </div>
+              </div>
+              <div class="lab-layers">
+                <span class="layer-chip">① 结构保护 · JSON Schema</span>
+                <span class="layer-chip">② 文体保护 · 新闻稿不抽办理字段</span>
+                <span class="layer-chip">③ 事实保护 · 原文接地</span>
+                <span class="layer-chip">④ 兜底保护 · 自动降级且来源可见</span>
+              </div>
+            </div>
+
+            <div class="card lab-form">
+              <div class="card-head"><h2>输入原文</h2><span class="hint">点示例后改几个字，观察证据与校验的变化</span></div>
+              <div class="lab-samples" id="labSamples">
+                <button class="chip" data-sample="contest">竞赛报名通知</button>
+                <button class="chip" data-sample="news">新闻资讯（应判为不可办理）</button>
+                <button class="chip" data-sample="scholar">奖学金评选</button>
+              </div>
+              <div class="field-grid">
+                <label class="field-cell"><span>通知标题</span>
+                  <input class="input" id="labTitle" placeholder="关于举办…的通知" /></label>
+                <label class="field-cell"><span>发布日期</span>
+                  <input class="input" id="labPublish" type="date" /></label>
+              </div>
+              <label class="field-block wide"><span>通知正文</span>
+                <textarea class="input" id="labContent" rows="7" placeholder="粘贴高校通知原文…"></textarea></label>
+              <div class="lab-actions">
+                <label class="check-line"><input type="checkbox" id="labRuleOnly" /> 仅用规则引擎（对照演示）</label>
+                <button class="btn primary" id="btnLabRun">开始解析</button>
+              </div>
+              <p class="hint" id="labHint" style="margin-top:10px">置信度是字段完整度与可核验度的加权结果，不是录取概率或正确率。</p>
+            </div>
+            <div id="labResult"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============ 我的任务 ============ -->
+      <section class="view" id="view-tasks">
+        <div class="container">
+          <div class="task-stats" id="taskStats"></div>
+          <div class="grid-2" style="margin-top:0">
+            <div class="card">
+              <div class="card-head"><h2>即将截止</h2><span class="hint">未来 30 天</span></div>
+              <div class="list" id="agendaList"></div>
+            </div>
+            <div class="card">
+              <div class="card-head"><h2>我的待办</h2><span class="hint">从通知详情加入</span></div>
+              <div class="list" id="taskList"></div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============ 数据总览（信息治理） ============ -->
+      <section class="view" id="view-dashboard">
+        <div class="container">
+          <div class="kpi-grid" id="kpiGrid"></div>
+
+          <div class="grid-2">
+            <div class="card">
+              <div class="card-head"><h2>通知分类分布</h2><span class="hint">按已收录通知统计</span></div>
+              <div class="bars" id="catBars"></div>
+            </div>
+            <div class="card">
+              <div class="card-head"><h2>近 7 日录入趋势</h2><span class="hint">条 / 天</span></div>
+              <div class="trend" id="trendChart"></div>
+            </div>
+          </div>
+
+          <div class="grid-2">
+            <div class="card">
+              <div class="card-head"><h2>7 天内截止事项</h2><span class="hint">按剩余天数排序</span></div>
+              <div class="list" id="deadlineList"></div>
+            </div>
+            <div class="card">
+              <div class="card-head"><h2>解析质量</h2><span class="hint">置信度与复核状态</span></div>
+              <div class="quality" id="qualityBox"></div>
+            </div>
+          </div>
+
+          <div class="grid-2 block-gap">
+            <div class="card">
+              <div class="card-head"><h2>采集渠道构成</h2><span class="hint">真实站点抓取与离线样本的占比</span></div>
+              <div class="bars" id="modeBars"></div>
+            </div>
+            <div class="card">
+              <div class="card-head"><h2>文体构成</h2><span class="hint">新闻资讯不参与报名类字段抽取</span></div>
+              <div class="bars" id="genreBars"></div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+    </div>
+  </main>
+</div>
+
+<!-- 移动端底部导航 -->
+<nav class="mobile-nav" id="mobileNav">
+  <button class="active" data-view="home"><svg><use href="#i-home"/></svg>首页</button>
+  <button data-view="notices"><svg><use href="#i-notice"/></svg>通知</button>
+  <button data-view="match"><svg><use href="#i-match"/></svg>匹配</button>
+  <button data-view="qa"><svg><use href="#i-spark"/></svg>AI</button>
+  <button data-view="tasks"><svg><use href="#i-task"/></svg>任务</button>
+  <button data-action="more" id="mobileMore"><svg><use href="#i-chart"/></svg>更多</button>
+</nav>
+
+<div class="sheet-mask" id="sheetMask"></div>
+<nav class="sheet" id="moreSheet" aria-label="更多功能">
+  <div class="sheet-handle"></div>
+  <button class="sheet-item" data-view="dashboard"><span class="ico"><svg><use href="#i-chart"/></svg></span>数据总览</button>
+  <button class="sheet-item" data-view="sources"><span class="ico"><svg><use href="#i-cloud"/></svg></span>采集中心</button>
+  <button class="sheet-item" id="sheetAddNotice"><span class="ico"><svg><use href="#i-plus"/></svg></span>录入通知</button>
+  <button class="sheet-item" id="sheetBatchAnalyze"><span class="ico"><svg><use href="#i-spark"/></svg></span>批量解析</button>
+</nav>
+
+<!-- 详情抽屉 -->
+<div class="drawer-mask" id="drawerMask"></div>
+<aside class="drawer" id="drawer">
+  <div class="drawer-head">
+    <div>
+      <h2 id="drawerTitle">通知详情</h2>
+      <p class="hint" id="drawerMeta"></p>
+    </div>
+    <button class="icon-btn" id="drawerClose">✕</button>
+  </div>
+  <div class="drawer-body" id="drawerBody"></div>
+</aside>
+
+<!-- 录入弹窗 -->
+<div class="modal-mask" id="modalMask">
+  <div class="modal">
+    <div class="modal-head">
+      <h2>录入通知</h2>
+      <button class="icon-btn" id="modalClose">✕</button>
+    </div>
+    <div class="tabs" id="ingestTabs">
+      <button class="tab active" data-tab="manual">手动录入</button>
+      <button class="tab" data-tab="url">粘贴链接采集</button>
+    </div>
+    <div class="modal-body">
+      <div class="tab-pane active" id="pane-manual">
+        <label class="field"><span>通知标题</span><input class="input" id="inTitle" placeholder="例：关于举办2026年数学建模竞赛的通知" /></label>
+        <div class="row">
+          <label class="field"><span>发布时间</span><input class="input" id="inPublish" type="date" /></label>
+          <label class="field"><span>来源单位</span><input class="input" id="inSource" placeholder="例：教务处" /></label>
+        </div>
+        <label class="field"><span>通知正文</span><textarea class="input area" id="inContent" rows="10" placeholder="粘贴通知全文，系统将自动清洗并解析"></textarea></label>
+      </div>
+      <div class="tab-pane" id="pane-url">
+        <label class="field"><span>公开网页链接</span><input class="input" id="inUrl" placeholder="https://jwc.whut.edu.cn/..." /></label>
+        <p class="hint">仅支持白名单高校域名（.edu.cn / .ac.cn），采集失败时可切换到手动录入。</p>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn ghost" id="modalCancel">取消</button>
+      <button class="btn primary" id="modalSubmit">录入并解析</button>
+    </div>
+  </div>
+</div>
+
+<!-- 角色账号登录弹窗 -->
+<div class="modal-mask" id="loginMask">
+  <div class="modal login-modal">
+    <div class="modal-head">
+      <h2>选择角色账号登录</h2>
+      <button class="icon-btn" id="loginClose">✕</button>
+    </div>
+    <div class="login-intro">不同角色拥有各自的年级、专业与兴趣画像，登录后「我的匹配」只按当前登录者的画像计算，三档结论与理由随角色切换而更新。</div>
+    <div class="login-roles" id="loginRoles"></div>
+    <div class="login-foot">
+      <button class="btn ghost sm" id="loginCancel">暂不登录</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+<script src="/static/js/app.js"></script>
+</body>
+</html>

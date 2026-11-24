@@ -1,0 +1,417 @@
+{
+  "meta": {
+    "name": "高校智讯通知解析评测集（人工标注）",
+    "version": "1.0",
+    "annotated_at": "2026-11-03",
+    "annotation_rule": "以通知原文为准，只标注原文明确写出的信息。deadline 仅指报名/申报/材料提交截止日期；原文未写明确截止日则标 null。target 用最小可判定身份词（如“本科生”“研究生”）。conditions/materials 用原文关键词的规范表述，评测采用双向包含匹配。",
+    "case_count": 24,
+    "fields": [
+      "category",
+      "deadline",
+      "target",
+      "conditions",
+      "materials"
+    ]
+  },
+  "cases": [
+    {
+      "key": "N01",
+      "gold": {
+        "category": "学科竞赛",
+        "deadline": "2026-11-20",
+        "target": [
+          "本科生"
+        ],
+        "conditions": [
+          "3人团队",
+          "每人限报一队",
+          "无违纪记录"
+        ],
+        "materials": [
+          "报名表",
+          "个人简历",
+          "作品说明"
+        ]
+      }
+    },
+    {
+      "key": "N02",
+      "gold": {
+        "category": "学科竞赛",
+        "deadline": "2026-11-08",
+        "target": [
+          "本科生",
+          "研究生"
+        ],
+        "conditions": [],
+        "materials": [
+          "报名截图",
+          "学生证"
+        ]
+      }
+    },
+    {
+      "key": "N03",
+      "gold": {
+        "category": "学科竞赛",
+        "deadline": "2026-11-15",
+        "target": [
+          "本科生",
+          "研究生"
+        ],
+        "conditions": [
+          "3名学生组队",
+          "指导教师"
+        ],
+        "materials": [
+          "作品信息收集表",
+          "作品介绍PPT",
+          "演示视频",
+          "源代码"
+        ]
+      }
+    },
+    {
+      "key": "N04",
+      "gold": {
+        "category": "学科竞赛",
+        "deadline": "2026-11-25",
+        "target": [
+          "本科生"
+        ],
+        "conditions": [],
+        "materials": []
+      }
+    },
+    {
+      "key": "N05",
+      "gold": {
+        "category": "奖助学金",
+        "deadline": "2026-11-06",
+        "target": [
+          "本科生"
+        ],
+        "conditions": [
+          "二年级以上",
+          "专业前10%",
+          "无不及格科目"
+        ],
+        "materials": [
+          "申请审批表",
+          "个人事迹材料",
+          "成绩单",
+          "获奖证书"
+        ]
+      }
+    },
+    {
+      "key": "N06",
+      "gold": {
+        "category": "奖助学金",
+        "deadline": "2026-10-20",
+        "target": [
+          "本科生"
+        ],
+        "conditions": [
+          "家庭经济困难"
+        ],
+        "materials": [
+          "助学金申请表",
+          "家庭经济困难认定材料"
+        ]
+      }
+    },
+    {
+      "key": "N07",
+      "gold": {
+        "category": "奖助学金",
+        "deadline": "2026-11-12",
+        "target": [
+          "本科生"
+        ],
+        "conditions": [
+          "家庭经济困难",
+          "专业前30%"
+        ],
+        "materials": [
+          "励志奖学金申请表",
+          "成绩单",
+          "家庭经济困难认定证明",
+          "个人总结"
+        ]
+      }
+    },
+    {
+      "key": "N08",
+      "gold": {
+        "category": "奖助学金",
+        "deadline": null,
+        "target": [
+          "学生"
+        ],
+        "conditions": [
+          "突发变故"
+        ],
+        "materials": [
+          "临时困难补助申请表",
+          "证明材料"
+        ]
+      }
+    },
+    {
+      "key": "N09",
+      "gold": {
+        "category": "学术讲座",
+        "deadline": "2026-11-09",
+        "target": [
+          "师生",
+          "本科生",
+          "研究生"
+        ],
+        "conditions": [],
+        "materials": []
+      }
+    },
+    {
+      "key": "N10",
+      "gold": {
+        "category": "学术讲座",
+        "deadline": null,
+        "target": [
+          "教师",
+          "研究生"
+        ],
+        "conditions": [],
+        "materials": []
+      }
+    },
+    {
+      "key": "N11",
+      "gold": {
+        "category": "学术讲座",
+        "deadline": "2026-11-18",
+        "target": [
+          "本科生",
+          "研究生"
+        ],
+        "conditions": [
+          "Python基础"
+        ],
+        "materials": [
+          "报名表"
+        ]
+      }
+    },
+    {
+      "key": "N12",
+      "gold": {
+        "category": "科研项目",
+        "deadline": "2026-12-01",
+        "target": [
+          "本科生"
+        ],
+        "conditions": [
+          "二年级及以上",
+          "3—5人",
+          "指导教师"
+        ],
+        "materials": [
+          "项目申报书",
+          "项目简介",
+          "指导教师意见表"
+        ]
+      }
+    },
+    {
+      "key": "N13",
+      "gold": {
+        "category": "科研项目",
+        "deadline": "2026-11-28",
+        "target": [],
+        "conditions": [],
+        "materials": [
+          "结题报告书",
+          "研究成果佐证材料",
+          "项目经费决算表",
+          "答辩PPT"
+        ]
+      }
+    },
+    {
+      "key": "N14",
+      "gold": {
+        "category": "志愿服务",
+        "deadline": "2026-11-14",
+        "target": [
+          "本科生",
+          "研究生"
+        ],
+        "conditions": [
+          "全程参与",
+          "师范类专业优先"
+        ],
+        "materials": [
+          "支教志愿者报名表",
+          "个人简历"
+        ]
+      }
+    },
+    {
+      "key": "N15",
+      "gold": {
+        "category": "志愿服务",
+        "deadline": "2026-11-07",
+        "target": [
+          "本科生"
+        ],
+        "conditions": [],
+        "materials": []
+      }
+    },
+    {
+      "key": "N16",
+      "gold": {
+        "category": "志愿服务",
+        "deadline": null,
+        "target": [
+          "学生"
+        ],
+        "conditions": [],
+        "materials": []
+      }
+    },
+    {
+      "key": "N17",
+      "gold": {
+        "category": "社会实践",
+        "deadline": "2026-12-15",
+        "target": [
+          "学生"
+        ],
+        "conditions": [
+          "5—10人",
+          "指导教师"
+        ],
+        "materials": [
+          "团队立项申报书",
+          "实践方案",
+          "安全预案",
+          "指导教师意见"
+        ]
+      }
+    },
+    {
+      "key": "N18",
+      "gold": {
+        "category": "社会实践",
+        "deadline": "2026-10-18",
+        "target": [],
+        "conditions": [],
+        "materials": [
+          "实践成果汇编材料"
+        ]
+      }
+    },
+    {
+      "key": "N19",
+      "gold": {
+        "category": "校园活动",
+        "deadline": "2026-11-16",
+        "target": [
+          "学生"
+        ],
+        "conditions": [
+          "不超过4人"
+        ],
+        "materials": [
+          "报名表"
+        ]
+      }
+    },
+    {
+      "key": "N20",
+      "gold": {
+        "category": "校园活动",
+        "deadline": "2026-11-11",
+        "target": [
+          "本科生",
+          "研究生"
+        ],
+        "conditions": [
+          "身体健康"
+        ],
+        "materials": [
+          "长跑比赛报名表",
+          "健康承诺书"
+        ]
+      }
+    },
+    {
+      "key": "N21",
+      "gold": {
+        "category": "校园活动",
+        "deadline": "2026-11-30",
+        "target": [
+          "本科生",
+          "研究生"
+        ],
+        "conditions": [
+          "原创"
+        ],
+        "materials": [
+          "作品说明"
+        ]
+      }
+    },
+    {
+      "key": "N22",
+      "gold": {
+        "category": "实习就业",
+        "deadline": "2026-11-11",
+        "target": [
+          "本科",
+          "硕士",
+          "博士"
+        ],
+        "conditions": [],
+        "materials": [
+          "学生证",
+          "简历"
+        ]
+      }
+    },
+    {
+      "key": "N23",
+      "gold": {
+        "category": "实习就业",
+        "deadline": null,
+        "target": [
+          "毕业生"
+        ],
+        "conditions": [],
+        "materials": [
+          "简历"
+        ]
+      }
+    },
+    {
+      "key": "N24",
+      "gold": {
+        "category": "实习就业",
+        "deadline": "2026-12-10",
+        "target": [
+          "本科生"
+        ],
+        "conditions": [
+          "80分",
+          "服从管理"
+        ],
+        "materials": [
+          "实习申请表",
+          "成绩单",
+          "个人简历"
+        ]
+      }
+    }
+  ]
+}

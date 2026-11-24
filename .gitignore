@@ -1,0 +1,55 @@
+# ===== 环境与密钥 =====
+.env
+*.env.local
+*.env
+deploy/app/*.env
+deploy/docker/app.env
+deploy/cloud/cloud.env
+
+# ===== 云部署运行产物：凭证、私钥、状态、连接串一律不提交 =====
+# .auto-deploy 内含 SSH 私钥、terraform provider（100MB+）、tfstate、
+# 实例/VPC/安全组 ID 与部署日志，全部属于本机运行态，不进仓库。
+.auto-deploy/
+deploy/cloud/terraform.tfvars
+deploy/cloud/.terraform/
+deploy/cloud/*.tfstate
+deploy/cloud/*.tfstate.*
+deploy/cloud/tfplan
+deploy/cloud/cloud-output.json
+*.tfstate
+*.tfstate.*
+*.tfplan
+crash.log
+
+# ===== 数据库 =====
+data/*.db
+data/*.sqlite3
+*.db-journal
+*.sqlite
+*.sqlite3
+
+# ===== Python =====
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+env/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# ===== 编辑器 / 系统 =====
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ===== 运行日志 =====
+*.log
+logs/
+
+# ===== 本地临时脚本（以 .tmp_ 前缀的调试文件）=====
+.tmp_*
+tmp/

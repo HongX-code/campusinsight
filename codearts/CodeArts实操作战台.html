@@ -1,0 +1,585 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CodeArts 全流程实操作战台 · 高校智讯</title>
+<style>
+:root{
+  --bg:#F6F8FC; --card:#FFFFFF; --text:#172033; --muted:#64748B; --soft:#8B97A8;
+  --line:#E7ECF4; --blue:#2563EB; --blue-soft:#EFF5FF; --purple:#7C3AED;
+  --purple-soft:#F4EFFF; --green:#16A34A; --green-soft:#EAF8EF;
+  --amber:#D97706; --amber-soft:#FFF6E6; --red:#DC2626; --red-soft:#FEF0F0;
+  --radius:16px; --shadow:0 1px 2px rgba(23,32,51,.04),0 8px 24px rgba(23,32,51,.05);
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;background:var(--bg);color:var(--text);
+  font-family:system-ui,-apple-system,"Segoe UI","Microsoft YaHei","PingFang SC","Noto Sans CJK SC","Noto Sans SC","WenQuanYi Micro Hei",sans-serif;
+  font-size:14px;line-height:1.65;-webkit-font-smoothing:antialiased}
+a{color:var(--blue);text-decoration:none}
+a:hover{text-decoration:underline}
+.wrap{max-width:1180px;margin:0 auto;padding:0 24px 72px}
+
+/* ---------- header ---------- */
+header{background:rgba(255,255,255,.86);backdrop-filter:blur(14px);
+  border-bottom:1px solid var(--line);position:sticky;top:0;z-index:20}
+.head-in{max-width:1180px;margin:0 auto;padding:14px 24px;display:flex;
+  align-items:center;gap:18px;flex-wrap:wrap}
+.brand{display:flex;align-items:center;gap:11px;margin-right:auto}
+.mark{width:36px;height:36px;border-radius:11px;background:var(--blue-soft);
+  color:var(--blue);display:grid;place-items:center;font-weight:700;font-size:17px;letter-spacing:-1px}
+.brand b{font-size:15px;display:block;line-height:1.3}
+.brand span{font-size:11.5px;color:var(--soft);letter-spacing:.4px}
+.badge{font-size:11.5px;padding:5px 11px;border-radius:999px;font-weight:600;white-space:nowrap}
+.badge.ready{background:var(--green-soft);color:var(--green)}
+.badge.pending{background:var(--amber-soft);color:var(--amber)}
+.btn{font:inherit;font-size:12.5px;padding:7px 13px;border-radius:9px;cursor:pointer;
+  border:1px solid var(--line);background:#fff;color:var(--text);transition:all .18s ease}
+.btn:hover{border-color:var(--blue);color:var(--blue);transform:translateY(-1px)}
+.btn.primary{background:var(--blue);border-color:var(--blue);color:#fff}
+.btn.primary:hover{background:#1D4FD8;color:#fff}
+nav.bar{max-width:1180px;margin:0 auto;padding:0 24px 11px;display:flex;gap:6px;flex-wrap:wrap}
+nav.bar a{font-size:12.5px;color:var(--muted);padding:5px 10px;border-radius:8px;transition:all .18s ease}
+nav.bar a:hover{background:var(--blue-soft);color:var(--blue);text-decoration:none}
+
+/* ---------- hero ---------- */
+.hero{padding:38px 0 26px}
+.eyebrow{font-size:11.5px;letter-spacing:2px;color:var(--purple);font-weight:700;text-transform:uppercase}
+h1{font-size:30px;line-height:1.3;margin:10px 0 12px;letter-spacing:-.5px}
+h1 em{font-style:normal;color:var(--blue)}
+.lede{font-size:14.5px;color:var(--muted);max-width:820px;margin:0}
+.notice{margin-top:18px;padding:13px 16px;border-radius:12px;background:var(--amber-soft);
+  border:1px solid #F6E2BC;color:#7C5312;font-size:12.8px}
+
+/* ---------- sections ---------- */
+section{margin-top:38px;scroll-margin-top:104px}
+.sec-head{display:flex;align-items:baseline;gap:12px;margin-bottom:16px;flex-wrap:wrap}
+.sec-head h2{font-size:19px;margin:0;letter-spacing:-.2px}
+.sec-head p{margin:0;color:var(--soft);font-size:12.5px}
+.kicker{font-size:11px;color:var(--blue);font-weight:700;letter-spacing:1.2px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);
+  box-shadow:var(--shadow);padding:20px}
+.grid{display:grid;gap:14px}
+.g4{grid-template-columns:repeat(4,1fr)}
+.g3{grid-template-columns:repeat(3,1fr)}
+.g2{grid-template-columns:repeat(2,1fr)}
+
+/* metrics */
+.metric{padding:18px 20px}
+.metric .num{font-size:29px;font-weight:700;letter-spacing:-1px;line-height:1.1}
+.metric .lbl{font-size:12.5px;color:var(--muted);margin-top:6px}
+.metric .sub{font-size:11.5px;color:var(--soft);margin-top:9px;border-top:1px solid var(--line);padding-top:9px}
+.c-blue{color:var(--blue)} .c-purple{color:var(--purple)}
+.c-green{color:var(--green)} .c-amber{color:var(--amber)}
+
+/* methodology */
+.loop{display:flex;align-items:stretch;gap:10px;flex-wrap:wrap;margin-bottom:14px}
+.loop .node{flex:1 1 105px;min-width:105px;background:var(--blue-soft);border:1px solid #DBE8FF;
+  border-radius:11px;padding:11px 8px;text-align:center;font-size:12.3px;color:#1E4FBF;font-weight:600}
+.loop .node.ai{background:var(--purple-soft);border-color:#E4D7FF;color:#6334C4}
+.loop .arrow{align-self:center;color:#B7C2D4;font-size:15px}
+.loop-label{font-size:11.5px;color:var(--soft);margin:0 0 8px;font-weight:600;letter-spacing:.5px}
+.evidence{display:grid;gap:10px}
+.evidence .row{display:flex;gap:12px;align-items:flex-start;padding:11px 13px;
+  border:1px solid var(--line);border-radius:11px;background:#FCFDFF}
+.evidence .lv{font-size:11px;font-weight:700;color:#fff;background:var(--blue);
+  border-radius:7px;padding:3px 8px;white-space:nowrap;margin-top:2px}
+.evidence .row:nth-child(2) .lv{background:var(--purple)}
+.evidence .row:nth-child(3) .lv{background:var(--green)}
+.evidence .row b{font-size:12.8px}
+.evidence .row p{margin:3px 0 0;font-size:12.2px;color:var(--muted)}
+
+/* table */
+.table-scroll{overflow-x:auto;-webkit-overflow-scrolling:touch;border-radius:10px}
+table{width:100%;border-collapse:collapse;font-size:12.6px}
+th,td{text-align:left;padding:10px 12px;border-bottom:1px solid var(--line);vertical-align:top}
+th{font-size:11.5px;color:var(--soft);font-weight:600;letter-spacing:.4px;background:#FBFCFE}
+tr:last-child td{border-bottom:none}
+td code,p code,li code{background:#F2F5FA;border-radius:5px;padding:1px 5px;
+  font-family:ui-monospace,SFMono-Regular,Consolas,monospace;font-size:11.6px;color:#334155}
+.st{font-size:11.5px;font-weight:600;white-space:nowrap}
+.st.ok{color:var(--green)} .st.wait{color:var(--amber)}
+
+/* progress */
+.progress-wrap{display:flex;align-items:center;gap:14px;margin:0 0 16px;flex-wrap:wrap}
+.progress-wrap .label{font-size:12.5px;color:var(--muted);min-width:130px}
+.track{flex:1;min-width:180px;height:7px;background:#E9EEF7;border-radius:99px;overflow:hidden}
+.fill{height:100%;width:0;background:var(--blue);border-radius:99px;transition:width .25s ease}
+.fill.purple{background:var(--purple)}
+.pct{font-size:12.5px;font-weight:700;color:var(--blue);min-width:44px;text-align:right}
+
+/* timeline */
+.timeline{position:relative;padding-left:26px}
+.timeline:before{content:"";position:absolute;left:7px;top:8px;bottom:8px;width:2px;
+  background:linear-gradient(180deg,#DBE8FF,#EDE3FF)}
+.day{position:relative;background:var(--card);border:1px solid var(--line);border-radius:14px;
+  padding:15px 17px;margin-bottom:12px;box-shadow:var(--shadow)}
+.day:before{content:"";position:absolute;left:-24px;top:21px;width:11px;height:11px;
+  border-radius:50%;background:#fff;border:2.5px solid var(--blue)}
+.day.done:before{background:var(--green);border-color:var(--green)}
+.day-top{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.day-top .n{font-size:11px;font-weight:700;color:var(--blue);background:var(--blue-soft);
+  border-radius:7px;padding:3px 9px;letter-spacing:.5px}
+.day-top h3{font-size:14.5px;margin:0;flex:1;min-width:200px}
+.chk{display:inline-flex;align-items:center;gap:7px;font-size:12.2px;color:var(--muted);cursor:pointer;white-space:nowrap}
+.chk input{width:15px;height:15px;accent-color:var(--blue);cursor:pointer}
+.day p{margin:9px 0 0;font-size:12.4px;color:var(--muted)}
+.tags{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px}
+.tag{font-size:11px;color:var(--purple);background:var(--purple-soft);border-radius:6px;padding:2px 8px;font-weight:600}
+.tag.g{color:var(--green);background:var(--green-soft)}
+.tag.a{color:var(--amber);background:var(--amber-soft)}
+
+/* prompts */
+.prompt{border:1px solid var(--line);border-radius:13px;background:var(--card);
+  padding:14px 15px;box-shadow:var(--shadow);display:flex;flex-direction:column;gap:9px}
+.prompt .top{display:flex;align-items:center;gap:9px}
+.prompt .pid{font-size:11px;font-weight:700;color:#fff;background:var(--purple);
+  border-radius:6px;padding:2px 8px;min-width:34px;text-align:center}
+.prompt .pname{font-size:13px;font-weight:600;flex:1}
+.prompt .short{font-size:12.1px;color:var(--muted);background:#FAFBFE;border:1px solid var(--line);
+  border-radius:9px;padding:9px 11px;min-height:62px}
+.prompt .acts{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.prompt .acts a{font-size:11.8px}
+.mini{font:inherit;font-size:11.5px;padding:5px 10px;border-radius:8px;cursor:pointer;
+  border:1px solid #DCD3F7;background:var(--purple-soft);color:#6334C4;transition:all .18s ease}
+.mini:hover{background:#E9DEFF}
+.mini.ok{background:var(--green-soft);border-color:#BFE7CC;color:var(--green)}
+
+/* checklist */
+.checklist{display:grid;gap:2px}
+.checklist label{display:flex;gap:10px;align-items:flex-start;padding:8px 4px;
+  border-bottom:1px dashed var(--line);font-size:12.6px;cursor:pointer}
+.checklist label:last-child{border-bottom:none}
+.checklist input{width:15px;height:15px;accent-color:var(--blue);margin-top:3px;cursor:pointer}
+.checklist .k{font-size:11px;color:var(--soft);min-width:34px}
+.checklist b{font-weight:600}
+.checklist span{color:var(--muted)}
+
+/* commands */
+pre{margin:0;background:#FBFCFE;border:1px solid var(--line);border-radius:11px;
+  padding:14px 16px;overflow:auto;font-family:ui-monospace,SFMono-Regular,Consolas,monospace;
+  font-size:11.9px;line-height:1.85;color:#334155}
+pre .c{color:#94A3B8}
+.cmd-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;gap:10px;flex-wrap:wrap}
+.cmd-head b{font-size:13px}
+
+/* footer */
+.boundary{margin-top:36px;border:1px solid #F3DCB2;background:#FFFBF3;border-radius:14px;padding:18px 20px}
+.boundary h3{margin:0 0 8px;font-size:14px;color:#8A5A10}
+.boundary p{margin:0;font-size:12.6px;color:#7C6237}
+footer{margin-top:30px;padding-top:18px;border-top:1px solid var(--line);
+  display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;font-size:11.8px;color:var(--soft)}
+
+@media(max-width:1000px){.g4{grid-template-columns:repeat(2,1fr)}.g3{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:680px){
+  .wrap{padding:0 16px 56px}.head-in,.nav.bar{padding-left:16px;padding-right:16px}
+  h1{font-size:24px}.g4,.g3,.g2{grid-template-columns:1fr}
+  table{min-width:540px}
+  .loop .node{flex:1 1 44%}.loop .arrow{display:none}
+  .head-in{gap:10px}.badge{font-size:10.5px}
+}
+@media print{
+  header{position:static;backdrop-filter:none}.btn,.mini,nav.bar,.progress-wrap{display:none!important}
+  body{background:#fff;font-size:11.5px}.wrap{max-width:none;padding:0 8px}
+  .card,.day,.prompt{box-shadow:none;break-inside:avoid;page-break-inside:avoid}
+  section{margin-top:22px}.hero{padding:16px 0 10px}h1{font-size:22px}
+  .timeline:before{background:#CBD5E1}
+}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="head-in">
+    <div class="brand">
+      <div class="mark">智</div>
+      <div>
+        <b>CodeArts 全流程实操作战台</b>
+        <span>高校智讯 / CampusInsight · 华为 ICT 大赛创新赛</span>
+      </div>
+    </div>
+    <span class="badge ready">v1.1 · 方案与工具已就绪</span>
+    <span class="badge pending">客户端实操留痕待补齐</span>
+    <button class="btn" id="btnPrint">打印 / 存 PDF</button>
+    <button class="btn" id="btnReset">重置进度</button>
+  </div>
+  <nav class="bar">
+    <a href="#overview">总览</a><a href="#method">方法论</a><a href="#matrix">就绪度</a>
+    <a href="#schedule">逐日排期</a><a href="#prompts">提示词</a><a href="#evidence">留痕清单</a>
+    <a href="#commands">验收命令</a><a href="#boundary">状态边界</a>
+  </nav>
+</header>
+
+<div class="wrap">
+
+  <div class="hero" id="overview">
+    <div class="eyebrow">From Idea to Application · Evidence-Driven</div>
+    <h1>把 AI 参与开发的每一步，变成<em>可复现、可追溯、可核验</em>的工程记录</h1>
+    <p class="lede">面向华为云码道 CodeArts 代码智能体的执行看板：一条主文档、十一个提示词、七天排期、九阶段门禁，
+      把赛题「想法到应用」的要求落到每天可检查的动作上。本页离线可用，勾选进度保存在本机浏览器。</p>
+    <div class="notice"><b>先读这一句：</b>本页以及它链接到的提示词、模板、骨架，全部属于「方案与工具」，
+      <b>不是 CodeArts 已实操的证据</b>。真实会话导出与带日期的过程截图，仍需团队按排期在客户端执行后归档。</div>
+  </div>
+
+    <div class="card" style="margin:14px 0;padding:14px 16px">
+      <div class="cmd-head"><b>v2.0 进阶提示词与执行契约</b>
+        <span style="font-size:11.5px;color:var(--soft)">换人接手 / 云端 / 留痕 / 提交前收口</span></div>
+      <p style="font-size:12.5px;line-height:1.8;margin:8px 0 0;color:var(--muted)">
+        日常改码用下方 P0—P10；<b>换人接手或推进下一阶段</b>请改用
+        <a href="../docs/codearts_prompts_advanced.md" style="color:#2563EB">docs/codearts_prompts_advanced.md</a>：
+        先粘 §2 的 B0 接手上下文注入块，再复制 A1—A10 对应提示词并附 A0 执行契约，
+        改完按 §5 验收矩阵逐条核对。A 系列<b>不参与 split</b>，下方 11 份 P 系列口径不变；
+        本页与这两份文档都属于方案资产，<b>不是 CodeArts 已实操的证据</b>。</p>
+    </div>
+
+  <div class="grid g4">
+    <div class="card metric"><div class="num c-blue">11</div><div class="lbl">P0—P10 提示词</div>
+      <div class="sub">系统常驻 1 + 任务级 10，独立文件可整份复制</div></div>
+    <div class="card metric"><div class="num c-purple">7</div><div class="lbl">Day 1—Day 7 逐日排期</div>
+      <div class="sub">七类截图分散到 7 天，避免最后一天集中补图</div></div>
+    <div class="card metric"><div class="num c-green">9</div><div class="lbl">构建门禁阶段</div>
+      <div class="sub">含环境体检，失败即停、不吞退出码</div></div>
+    <div class="card metric"><div class="num c-amber">3</div><div class="lbl">层证据</div>
+      <div class="sub">L1 可复现 · L2 可追溯 · L3 可核验</div></div>
+  </div>
+
+  <section id="method">
+    <div class="sec-head"><span class="kicker">METHOD</span><h2>方法论：双闭环 · 三层证据</h2>
+      <p>两条闭环按同一张逐日排期同步推进</p></div>
+    <div class="grid g2">
+      <div class="card">
+        <p class="loop-label">内环 · 开发闭环（CodeArts 承担的工作）</p>
+        <div class="loop">
+          <div class="node">需求理解</div><span class="arrow">→</span>
+          <div class="node ai">生成 / 修改</div><span class="arrow">→</span>
+          <div class="node">构建</div><span class="arrow">→</span>
+          <div class="node ai">调试定位</div><span class="arrow">→</span>
+          <div class="node">修复 · 测试</div><span class="arrow">→</span>
+          <div class="node">集成 · 部署</div>
+        </div>
+        <p class="loop-label" style="margin-top:16px">外环 · 证据闭环（团队同步留下的记录）</p>
+        <div class="loop">
+          <div class="node">提示词</div><span class="arrow">→</span>
+          <div class="node">会话导出</div><span class="arrow">→</span>
+          <div class="node">过程截图</div><span class="arrow">→</span>
+          <div class="node">采纳 / 排错</div><span class="arrow">→</span>
+          <div class="node">回归输出</div><span class="arrow">→</span>
+          <div class="node">归档</div>
+        </div>
+        <p style="font-size:12.2px;color:var(--muted);margin:14px 0 0">
+          只做内环，材料里就只剩「用过了」；两环同步，才能回答「这段改动是哪句提示词带来的、当时怎么验证的」。</p>
+      </div>
+      <div class="card">
+        <p class="loop-label">三层证据（缺任何一层都容易被判为「只上传过代码」）</p>
+        <div class="evidence">
+          <div class="row"><span class="lv">L1</span><div><b>可复现</b>
+            <p>命令与退出码：<code>doctor</code> / <code>index</code> / <code>verify</code> / <code>ci_gate.py</code>、双集评测与真实集审计。</p></div></div>
+          <div class="row"><span class="lv">L2</span><div><b>可追溯</b>
+            <p>提示词与产出一一对应：<code>codearts/prompts/</code> 独立文件、会话对照表、开发日志的「提示词编号」列。</p></div></div>
+          <div class="row"><span class="lv">L3</span><div><b>可核验</b>
+            <p>材料与代码自洽、时间真实：交付件页数 / 字数 / 口径体检、带日期的过程截图、逐日检查清单。</p></div></div>
+        </div>
+        <p style="font-size:12.2px;color:var(--muted);margin:14px 0 0">
+          判定原则：<b>没有命令输出的结论标「待验证」，没有截图的状态不写「已完成」</b>。</p>
+      </div>
+    </div>
+  </section>
+
+  <section id="matrix">
+    <div class="sec-head"><span class="kicker">READINESS</span><h2>就绪度矩阵</h2>
+      <p>✅ 已就绪 = 本地可一键运行；⏳ 待实操 = 必须由团队在客户端完成</p></div>
+    <div class="card" style="padding:6px 8px">
+      <div class="table-scroll">
+      <table>
+        <thead><tr><th style="width:19%">能力</th><th style="width:35%">落地资产</th><th style="width:31%">一键入口</th><th style="width:15%">状态</th></tr></thead>
+        <tbody>
+          <tr><td>环境一致性</td><td><code>codearts_tools.py doctor</code></td><td>输出可复制的解释器前缀</td><td class="st ok">✅ 已就绪</td></tr>
+          <tr><td>代码库索引覆盖</td><td>同脚本 <code>index</code></td><td>列出智能体「看不到」的文件</td><td class="st ok">✅ 已就绪</td></tr>
+          <tr><td>常驻工程约束</td><td><code>.codeartsdoer/AGENTS.md</code></td><td>新会话自动加载</td><td class="st ok">✅ 已就绪</td></tr>
+          <tr><td>任务级提示词</td><td><code>codearts/prompts/P00—P10</code></td><td><code>split --check</code> 保证单一数据源</td><td class="st ok">✅ 已就绪</td></tr>
+          <tr><td>逐日排期与短卡片</td><td>主文档 §4.2—§4.4 + 本页时间轴</td><td>按 Day 选提示词</td><td class="st ok">✅ 已就绪</td></tr>
+          <tr><td>留痕骨架</td><td><code>11_CodeArts使用记录/</code> 18 个文件</td><td><code>bootstrap --check</code></td><td class="st ok">✅ 骨架已生成</td></tr>
+          <tr><td>构建与质量门禁</td><td><code>scripts/ci_gate.py</code></td><td>9 阶段，失败即停</td><td class="st ok">✅ 已就绪</td></tr>
+          <tr><td>交付件口径体检</td><td>同脚本 <code>verify</code></td><td>行数 / 份数 / 页数 / 旧值 / 资产</td><td class="st ok">✅ 已就绪</td></tr>
+          <tr><td>真实会话与七类截图</td><td><code>11_CodeArts使用记录/01—06</code></td><td>—</td><td class="st wait">⏳ 待团队实操</td></tr>
+          <tr><td>云资源开通与部署</td><td><code>05_云资源与部署/</code></td><td>P6 / P7</td><td class="st wait">⏳ 待资源到位</td></tr>
+        </tbody>
+      </table>
+      </div>
+    </div>
+  </section>
+
+  <section id="schedule">
+    <div class="sec-head"><span class="kicker">DAY 1—7</span><h2>逐日排期</h2>
+      <p>对齐技术文档 2 第 63 章；勾选仅用于本机跟踪，不替代真实留痕</p></div>
+    <div class="progress-wrap">
+      <span class="label">逐日收工进度</span>
+      <div class="track"><div class="fill" id="barDay"></div></div>
+      <span class="pct" id="pctDay">0 / 7</span>
+    </div>
+    <div class="timeline" id="timeline"></div>
+  </section>
+
+  <section id="prompts">
+    <div class="sec-head"><span class="kicker">PROMPTS</span><h2>短提示词卡片</h2>
+      <p>上下文受限 / 移动端追问时用；完整正文以主文档 §2 / §3 与独立文件为准</p></div>
+    <div class="grid g3" id="promptsGrid"></div>
+  </section>
+
+  <section id="evidence">
+    <div class="sec-head"><span class="kicker">EVIDENCE</span><h2>留痕清单</h2>
+      <p>七类截图 + 五类记录，勾选状态保存在本机浏览器</p></div>
+    <div class="progress-wrap">
+      <span class="label">证据归档进度</span>
+      <div class="track"><div class="fill purple" id="barEv"></div></div>
+      <span class="pct" id="pctEv" style="color:var(--purple)">0 / 12</span>
+    </div>
+    <div class="grid g2">
+      <div class="card"><div class="cmd-head"><b>七类过程截图</b><span style="font-size:11.5px;color:var(--soft)">主文档 §5.2</span></div>
+        <div class="checklist" id="shots"></div></div>
+      <div class="card"><div class="cmd-head"><b>五类留痕记录</b><span style="font-size:11.5px;color:var(--soft)">主文档 §5.3—§5.6</span></div>
+        <div class="checklist" id="docs"></div></div>
+    </div>
+  </section>
+
+  <section id="commands">
+    <div class="sec-head"><span class="kicker">COMMANDS</span><h2>开工与验收命令</h2>
+      <p>工程根 <code>作品文件/gaoxiao-zhixun/</code> 下执行；<code>python</code> 是代称</p></div>
+    <div class="card">
+      <div class="cmd-head"><b>把 <code>python</code> 换成 <code>doctor</code> 输出的前缀</b>
+        <button class="btn primary" data-copy-block="cmdMain">复制整段</button></div>
+      <pre id="cmdMain"><span class="c"># 0 环境与骨架（首次开工）</span>
+python scripts/codearts_tools.py doctor
+python scripts/codearts_tools.py bootstrap
+python scripts/codearts_tools.py bootstrap --check
+python scripts/codearts_tools.py index
+python scripts/codearts_tools.py all
+
+<span class="c"># 1 每天收工：9 阶段门禁（含环境体检，失败即停）</span>
+python scripts/ci_gate.py
+
+<span class="c"># 2 改了主文档的提示词 / 排期后</span>
+python scripts/codearts_tools.py split
+python scripts/codearts_tools.py split --check
+python scripts/codearts_tools.py verify
+
+<span class="c"># 3 改了文档口径后重建交付件（相对工程根 ../../）</span>
+python ../../申报材料/build_ppt.py
+python ../../申报材料/fill_form.py
+python ../../申报材料/export_pdf.py
+python ../../申报材料/export_pdf.py --check
+
+<span class="c"># 4 每次改动后：现场采集证据 + 口径自动回灌（进阶文档 A8）</span>
+python scripts/evidence.py --collect
+python scripts/evidence.py --check
+python scripts/scale_sync.py --check
+python scripts/mutation_audit.py</pre>
+      <p style="font-size:12.2px;color:var(--muted);margin:14px 0 0">
+        本机 <code>python</code> 指向未装依赖的 3.13，正确前缀是 <code>py -3.12</code>（或激活 venv 后直接用 <code>python</code>）。
+        详见主文档 §1.0；<code>doctor</code> 会现场给出你机器上的可用前缀，并顺带检查 node、可选依赖与 Office 文件占用。</p>
+    </div>
+  </section>
+
+  <section id="boundary" class="boundary">
+    <h3>状态边界 · 提交前请再确认一次</h3>
+    <p>本页、<code>codearts/</code> 下的提示词与模板、<code>11_CodeArts使用记录/</code> 里的空白骨架，都属于方案与工具，
+      <b>不构成 CodeArts 已实操的证据</b>。在真实会话导出、七类带日期截图、采纳 / 排错 / 开发日志归档完成前，
+      <code>design_compliance.md</code>、README、PPT 第 16 页与测试报告中的该项状态一律保持「待补齐」，
+      不得出现「已连通 / 已部署 / 已压测 / 效率提升 N%」等无凭证表述。<br>
+      完整红线与追加纠偏话术见 <a href="../docs/codearts_prompts.md">docs/codearts_prompts.md §6</a>，
+      填写颗粒度见 <a href="templates/填写示例.md">codearts/templates/填写示例.md</a>（示例 · 非证据）。</p>
+  </section>
+
+  <footer>
+    <span>高校智讯 / CampusInsight · CodeArts 实操作战台 v1.1 · 2026-11-07</span>
+    <span>单一数据源：docs/codearts_prompts.md · 本页为只读执行视图，不另立口径</span>
+  </footer>
+</div>
+
+<script>
+"use strict";
+const KEY = "campusinsight-codearts-console-v1";
+
+const DAYS = [
+  {n:1,title:"项目初始化与环境就绪",task:"FastAPI / MySQL / Git / CodeArts / 基础页面",
+   prompts:["P0","P1","P5","P8","P4"],
+   work:"重建索引、加载常驻约束；产出「需求 → 模块 → 验证命令」对照；生成门禁阶段表；对 app/ 做静态体检（只报不改）。",
+   check:"ci_gate.py --dry-run 通过；无新增依赖、无硬编码 Windows 路径",
+   shot:"截图 #1 需求对话 · #2 生成记录 · D1 会话导出"},
+  {n:2,title:"采集、解析与通知入库",task:"爬虫 / HTML 解析 / 正文清洗 / 去重 / 通知列表",
+   prompts:["P1","P9","P3","P2"],
+   work:"梳理 crawler → collector → cleaner → notices 调用链；生成正文碎片、翻页漂移、附件、非法 URL、重复指纹的边界用例；从真实缺陷现象独立定位。",
+   check:"test_smoke.py 全通过；新增用例必须能在旧实现下失败",
+   shot:"截图 #4 测试记录（第 1 张）· D2 两轮会话导出"},
+  {n:3,title:"AI 分类、抽取与证据链",task:"结构化字段 / 时间 / 条件 / 证据 / 入库",
+   prompts:["P4","P3","P2"],
+   work:"核对 analyzer._finalize() 是否仍是两条链路的唯一出口；生成文体闸门与字段契约边界用例；按定位结论产出最小修复 diff + 回归断言。",
+   check:"双集评测五项指标不退化；留出集复跑；ci_gate.py 全阶段通过",
+   shot:"截图 #3 缺陷修复 · #4 测试记录（第 2 张）· D3 会话导出"},
+  {n:4,title:"用户画像与个性化匹配",task:"匹配算法 / 评分 / 推荐理由 / 搜索",
+   prompts:["P9","P4","P3","P8"],
+   work:"审三档结论与「非录取概率」标注、检查硬条件冲突分支；生成专业 / 年级 / 学历冲突与空画像用例；核对文档匹配口径。",
+   check:"自检全绿；real_audit.py 结果不变；verify 无失败项",
+   shot:"截图 #2 口径修正 diff · D4 会话导出"},
+  {n:5,title:"AI 助手、待办与完整 Demo",task:"问答 / 待办 / 前端 7 视图 / 演示流程",
+   prompts:["P9","P3","P5"],
+   work:"按 Arctic Glass 规范审 7 视图五态与三档响应式；补 top_k 边界、单接口失败首页降级的回归；跑完整门禁；逐张核对 20 张截图。",
+   check:"三档宽度无横向溢出；Promise.allSettled 降级路径未被改回 Promise.all",
+   shot:"截图 #5 构建记录 · docs/shot-*.png 20 张"},
+  {n:6,title:"华为云资源与部署",task:"RDS / DCS Redis / MaaS / ECS / 接口测试",
+   prompts:["P6","P7","P2","P8"],
+   work:"产出开通清单与「控制台 → 环境变量 → 代码行为 → 验证命令」对照；真实开通后用官方 Skills 关联资源与部署；记录一次真实排错。",
+   check:"每个环境变量在 app/config.py 找得到；密钥一律占位符；云端与本地实测分开写",
+   shot:"截图 #6 云资源 · #7 部署记录（资源未到位则只留开通清单并标注待开通）"},
+  {n:7,title:"测试、评估与交付收口",task:"截图 / Demo 视频 / PPT / README / 答辩稿",
+   prompts:["P8","P10","P9","P0"],
+   work:"交付件口径一致性与开源前敏感信息扫描；按逐条符合度矩阵重建三件交付件；汇总采纳说明、排错记录、开发日志并核对七类截图日期分布。",
+   check:"verify 全绿；PPTX/PDF 均 20 页、DOCX 16 行、三项字数在限、旧值 0 命中",
+   shot:"11_CodeArts使用记录/ 全目录 · 最终口径 diff · 采纳说明"}
+];
+
+const PROMPTS = [
+  {id:"P0",name:"系统级常驻约束",file:"prompts/P00_system.md",text:"按 .codeartsdoer/AGENTS.md 的工程约束回答；先出方案再改码，末尾给验收命令，未验证的云资源一律写「代码就绪，待开通验证」。"},
+  {id:"P1",name:"需求理解与符合度盘点",file:"prompts/P01_requirements.md",text:"独立复核三份设计文档的符合度，标出矩阵里站不住的 ✅，只报不改，每条给文件与验证命令。"},
+  {id:"P2",name:"缺陷定位与修复",file:"prompts/P02_bugfix.md",text:"从现象出发定位这个 500 的调用链与抛异常行号，先别改码；说明为什么 143 项自检没抓到。"},
+  {id:"P3",name:"边界用例与回归测试",file:"prompts/P03_tests.md",text:"为接口层与界面层补边界用例，先给用例矩阵，确认后写进 test_smoke.py，不引入 pytest。"},
+  {id:"P4",name:"代码规范与静态检查",file:"prompts/P04_static_check.md",text:"静态体检 app/，最多列 10 条会导致 500 或数据不一致的问题，风格问题单列，不改文件。"},
+  {id:"P5",name:"构建脚本与流水线",file:"prompts/P05_pipeline.md",text:"生成单 FastAPI 进程的构建门禁阶段表：编译→自检→双集→真实集→JS 语法→交付件，任一步失败即中止。"},
+  {id:"P6",name:"华为云资源快速开通",file:"prompts/P06_cloud_resources.md",text:"列出 RDS/DCS/MaaS/ECS 开通清单与环境变量对照，密钥留占位符，不写「已连通」。"},
+  {id:"P7",name:"云端部署与在线演示",file:"prompts/P07_deploy.md",text:"给出 ECS 部署步骤、上线前三件事、外网自检清单与 502/404 排错表，凭证用占位符。"},
+  {id:"P8",name:"文档 / PPT / 表单口径同步",file:"prompts/P08_deliverables.md",text:"扫描 README/docs/申报材料里写死的数字与状态，列差异清单和最小替换，别整篇重写。"},
+  {id:"P9",name:"界面与体验优化",file:"prompts/P09_ui.md",text:"按 Arctic Glass 规范审 7 视图五态与三档响应式，只提最小改动，不改设计变量。"},
+  {id:"P10",name:"开源交付前检查",file:"prompts/P10_opensource.md",text:"开源前检查六类内容与敏感信息，只报不改，特别确认 .env、.db、file-index.db 已排除。"}
+];
+
+const SHOTS = [
+  ["#1","需求对话","提问全文 + 智能体产出的三类结果"],
+  ["#2","代码生成 / 修改","Prompt + 生成代码 + 最小 diff"],
+  ["#3","缺陷修复","根因结论 + 修复 diff + 测试全绿输出"],
+  ["#4","测试记录","用例数量 + 自检全通过"],
+  ["#5","构建记录","流水线各阶段状态"],
+  ["#6","云资源开通","控制台资源列表 + 连通性脚本输出（真实开通后）"],
+  ["#7","部署记录","服务状态 + 外网浏览器首页（含地址栏）"]
+];
+const DOCS = [
+  ["A","采纳说明","哪些建议采纳 / 没采纳及原因，至少留 1 条未采纳"],
+  ["B","排错记录","一次完整的发现 → 定位 → 修复 → 回归闭环"],
+  ["C","开发日志","逐日逐次台账：日期 / 提示词 / 产出 / 验收 / 截图编号"],
+  ["D","会话对照表","Prompt 与生成结果一一对应，与 06_会话导出 互引"],
+  ["E","每日检查清单","Day 1—Day 7 共 7 份，当天收工前逐项打勾"]
+];
+
+let state = {};
+try { state = JSON.parse(localStorage.getItem(KEY) || "{}") || {}; }
+catch (e) { state = {}; }
+
+function persist(){
+  try { localStorage.setItem(KEY, JSON.stringify(state)); }
+  catch (e) { /* file:// 下部分浏览器禁用存储：进度仅本次有效 */ }
+}
+function esc(s){
+  return String(s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c]));
+}
+function checked(key){ return state[key] ? "checked" : ""; }
+
+function renderDays(){
+  document.getElementById("timeline").innerHTML = DAYS.map(d => `
+    <div class="day" data-day="${d.n}">
+      <div class="day-top">
+        <span class="n">Day ${d.n}</span>
+        <h3>${esc(d.title)}</h3>
+        <label class="chk"><input type="checkbox" data-k="day${d.n}" ${checked("day"+d.n)}> 当日收工</label>
+      </div>
+      <p><b>技文 2 当日任务：</b>${esc(d.task)}</p>
+      <p><b>CodeArts 承担：</b>${esc(d.work)}</p>
+      <p><b>人工复核 / 验收：</b>${esc(d.check)}</p>
+      <div class="tags">
+        ${d.prompts.map(p => `<span class="tag">${p}</span>`).join("")}
+        <span class="tag g">${esc(d.shot)}</span>
+      </div>
+    </div>`).join("");
+}
+
+function renderPrompts(){
+  document.getElementById("promptsGrid").innerHTML = PROMPTS.map(p => `
+    <div class="prompt">
+      <div class="top"><span class="pid">${p.id}</span><span class="pname">${esc(p.name)}</span></div>
+      <div class="short">${esc(p.text)}</div>
+      <div class="acts">
+        <button class="mini" data-copy="${esc(p.text)}">复制短提示词</button>
+        <a href="${p.file}" target="_blank" rel="noopener">打开完整提示词 →</a>
+      </div>
+    </div>`).join("");
+}
+
+function renderEvidence(){
+  document.getElementById("shots").innerHTML = SHOTS.map((s,i) => `
+    <label><input type="checkbox" data-k="shot${i}" ${checked("shot"+i)}>
+      <span class="k">${s[0]}</span><span><b>${esc(s[1])}</b> · ${esc(s[2])}</span></label>`).join("");
+  document.getElementById("docs").innerHTML = DOCS.map((d,i) => `
+    <label><input type="checkbox" data-k="doc${i}" ${checked("doc"+i)}>
+      <span class="k">${d[0]}</span><span><b>${esc(d[1])}</b> · ${esc(d[2])}</span></label>`).join("");
+}
+
+function updateProgress(){
+  const dayDone = DAYS.filter(d => state["day"+d.n]).length;
+  const evDone = SHOTS.filter((_,i) => state["shot"+i]).length + DOCS.filter((_,i) => state["doc"+i]).length;
+  document.getElementById("barDay").style.width = (dayDone / DAYS.length * 100) + "%";
+  document.getElementById("pctDay").textContent = dayDone + " / " + DAYS.length;
+  document.getElementById("barEv").style.width = (evDone / (SHOTS.length + DOCS.length) * 100) + "%";
+  document.getElementById("pctEv").textContent = evDone + " / " + (SHOTS.length + DOCS.length);
+  document.querySelectorAll(".day").forEach(el => {
+    const cb = el.querySelector("input[type=checkbox]");
+    el.classList.toggle("done", !!(cb && cb.checked));
+  });
+}
+
+function copyText(text, btn){
+  const done = () => {
+    if (!btn) return;
+    const old = btn.textContent;
+    btn.textContent = "已复制 ✓"; btn.classList.add("ok");
+    setTimeout(() => { btn.textContent = old; btn.classList.remove("ok"); }, 1600);
+  };
+  if (navigator.clipboard && window.isSecureContext) {
+    navigator.clipboard.writeText(text).then(done).catch(() => fallback(text, done));
+  } else { fallback(text, done); }
+}
+function fallback(text, done){
+  const ta = document.createElement("textarea");
+  ta.value = text; ta.style.position = "fixed"; ta.style.opacity = "0";
+  document.body.appendChild(ta); ta.select();
+  try { document.execCommand("copy"); done(); } catch (e) { /* 忽略：可手动选中复制 */ }
+  document.body.removeChild(ta);
+}
+
+document.addEventListener("change", e => {
+  const input = e.target;
+  if (input && input.matches("input[type=checkbox][data-k]")) {
+    state[input.dataset.k] = input.checked;
+    persist(); updateProgress();
+  }
+});
+document.addEventListener("click", e => {
+  const btn = e.target.closest("[data-copy]");
+  if (btn) { copyText(btn.dataset.copy, btn); return; }
+  const block = e.target.closest("[data-copy-block]");
+  if (block) {
+    const el = document.getElementById(block.dataset.copyBlock);
+    if (el) copyText(el.innerText, block);
+    return;
+  }
+});
+document.getElementById("btnPrint").addEventListener("click", () => window.print());
+document.getElementById("btnReset").addEventListener("click", () => {
+  if (!window.confirm("清空本机的勾选进度？不会删除任何文件或真实留痕。")) return;
+  state = {}; persist();
+  document.querySelectorAll("input[type=checkbox][data-k]").forEach(cb => { cb.checked = false; });
+  updateProgress();
+});
+
+renderDays(); renderPrompts(); renderEvidence(); updateProgress();
+</script>
+</body>
+</html>

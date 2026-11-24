@@ -1,0 +1,404 @@
+{
+  "summary": {
+    "engine": "rule",
+    "cases": 8,
+    "category_accuracy": 1.0,
+    "deadline_accuracy": 1.0,
+    "deadline_recall_nonnull": 1.0,
+    "avg_confidence": 0.7987,
+    "needs_review_rate": 0.25,
+    "target_precision": 0.8667,
+    "target_recall": 0.9286,
+    "target_f1": 0.8966,
+    "conditions_precision": 0.8889,
+    "conditions_recall": 0.8,
+    "conditions_f1": 0.8421,
+    "materials_precision": 0.9231,
+    "materials_recall": 0.9231,
+    "materials_f1": 0.9231
+  },
+  "rows": [
+    {
+      "key": "H01",
+      "category": {
+        "gold": "科研项目",
+        "pred": "科研项目",
+        "hit": true
+      },
+      "deadline": {
+        "gold": "2026-12-10",
+        "pred": "2026-12-10",
+        "hit": true
+      },
+      "target": {
+        "gold": [
+          "硕士研究生",
+          "博士研究生"
+        ],
+        "pred": [
+          "博士研究生",
+          "硕士研究生"
+        ],
+        "tp": 2
+      },
+      "conditions": {
+        "gold": [
+          "二年级及以上",
+          "每人限报1项",
+          "已完成开题",
+          "85分",
+          "指导教师"
+        ],
+        "pred": [
+          "已完成开题",
+          "85分",
+          "二年级及以上",
+          "每人限报1项"
+        ],
+        "tp": 4
+      },
+      "materials": {
+        "gold": [
+          "申请书",
+          "开题报告",
+          "推荐意见表",
+          "成绩单"
+        ],
+        "pred": [
+          "开题报告",
+          "指导教师推荐意见表",
+          "个人成绩单"
+        ],
+        "tp": 3
+      },
+      "engine": "rule",
+      "confidence": 0.88,
+      "needs_review": false
+    },
+    {
+      "key": "H02",
+      "category": {
+        "gold": "学术讲座",
+        "pred": "学术讲座",
+        "hit": true
+      },
+      "deadline": {
+        "gold": "2026-12-20",
+        "pred": "2026-12-20",
+        "hit": true
+      },
+      "target": {
+        "gold": [
+          "学生",
+          "教师"
+        ],
+        "pred": [
+          "师生",
+          "教师"
+        ],
+        "tp": 1
+      },
+      "conditions": {
+        "gold": [
+          "原创成果",
+          "未公开发表",
+          "第一作者为学生或青年教师"
+        ],
+        "pred": [
+          "原创成果",
+          "第一作者为学生或青年教师"
+        ],
+        "tp": 2
+      },
+      "materials": {
+        "gold": [
+          "论文全文",
+          "投稿模板"
+        ],
+        "pred": [
+          "论文全文",
+          "投稿模板"
+        ],
+        "tp": 2
+      },
+      "engine": "rule",
+      "confidence": 0.88,
+      "needs_review": false
+    },
+    {
+      "key": "H03",
+      "category": {
+        "gold": "校园活动",
+        "pred": "校园活动",
+        "hit": true
+      },
+      "deadline": {
+        "gold": "2026-11-12",
+        "pred": "2026-11-12",
+        "hit": true
+      },
+      "target": {
+        "gold": [
+          "本科生"
+        ],
+        "pred": [
+          "师生",
+          "本科生"
+        ],
+        "tp": 1
+      },
+      "conditions": {
+        "gold": [
+          "党员或团员",
+          "专业前30%",
+          "无不及格科目",
+          "学生工作经历优先"
+        ],
+        "pred": [
+          "政治面貌为中共党员或共青团员",
+          "专业前30%",
+          "无不及格科目",
+          "有一年以上学生工作经历优先"
+        ],
+        "tp": 3
+      },
+      "materials": {
+        "gold": [
+          "竞选报名表",
+          "个人陈述"
+        ],
+        "pred": [
+          "报名表",
+          "个人陈述"
+        ],
+        "tp": 2
+      },
+      "engine": "rule",
+      "confidence": 0.88,
+      "needs_review": false
+    },
+    {
+      "key": "H04",
+      "category": {
+        "gold": "校园活动",
+        "pred": "校园活动",
+        "hit": true
+      },
+      "deadline": {
+        "gold": null,
+        "pred": null,
+        "hit": true
+      },
+      "target": {
+        "gold": [
+          "本科生",
+          "研究生"
+        ],
+        "pred": [
+          "硕士研究生",
+          "本科生"
+        ],
+        "tp": 2
+      },
+      "conditions": {
+        "gold": [],
+        "pred": [],
+        "tp": 0
+      },
+      "materials": {
+        "gold": [],
+        "pred": [
+          "学生证"
+        ],
+        "tp": 0
+      },
+      "engine": "rule",
+      "confidence": 0.6,
+      "needs_review": true
+    },
+    {
+      "key": "H05",
+      "category": {
+        "gold": "实习就业",
+        "pred": "实习就业",
+        "hit": true
+      },
+      "deadline": {
+        "gold": "2026-11-18",
+        "pred": "2026-11-18",
+        "hit": true
+      },
+      "target": {
+        "gold": [
+          "本科生",
+          "硕士研究生",
+          "博士研究生"
+        ],
+        "pred": [
+          "博士研究生",
+          "硕士研究生",
+          "本科生"
+        ],
+        "tp": 3
+      },
+      "conditions": {
+        "gold": [
+          "熟悉编程语言",
+          "项目或竞赛经历优先",
+          "每周实习4天"
+        ],
+        "pred": [
+          "熟悉至少一门编程语言",
+          "有项目或竞赛经历优先",
+          "每周实习4天"
+        ],
+        "tp": 2
+      },
+      "materials": {
+        "gold": [
+          "简历"
+        ],
+        "pred": [
+          "个人简历"
+        ],
+        "tp": 1
+      },
+      "engine": "rule",
+      "confidence": 0.88,
+      "needs_review": false
+    },
+    {
+      "key": "H06",
+      "category": {
+        "gold": "学科竞赛",
+        "pred": "学科竞赛",
+        "hit": true
+      },
+      "deadline": {
+        "gold": "2026-11-25",
+        "pred": "2026-11-25",
+        "hit": true
+      },
+      "target": {
+        "gold": [
+          "教师"
+        ],
+        "pred": [
+          "教师"
+        ],
+        "tp": 1
+      },
+      "conditions": {
+        "gold": [
+          "40周岁以下",
+          "工作满一年"
+        ],
+        "pred": [
+          "40周岁以下",
+          "工作满一年"
+        ],
+        "tp": 2
+      },
+      "materials": {
+        "gold": [
+          "推荐表",
+          "教学设计方案",
+          "课堂教学PPT"
+        ],
+        "pred": [
+          "参赛教师推荐表",
+          "教学设计方案",
+          "课堂教学PPT"
+        ],
+        "tp": 3
+      },
+      "engine": "rule",
+      "confidence": 0.88,
+      "needs_review": false
+    },
+    {
+      "key": "H07",
+      "category": {
+        "gold": "学术讲座",
+        "pred": "学术讲座",
+        "hit": true
+      },
+      "deadline": {
+        "gold": null,
+        "pred": null,
+        "hit": true
+      },
+      "target": {
+        "gold": [
+          "学生"
+        ],
+        "pred": [
+          "学生"
+        ],
+        "tp": 1
+      },
+      "conditions": {
+        "gold": [],
+        "pred": [],
+        "tp": 0
+      },
+      "materials": {
+        "gold": [],
+        "pred": [],
+        "tp": 0
+      },
+      "engine": "rule",
+      "confidence": 0.51,
+      "needs_review": true
+    },
+    {
+      "key": "H08",
+      "category": {
+        "gold": "志愿服务",
+        "pred": "志愿服务",
+        "hit": true
+      },
+      "deadline": {
+        "gold": "2026-11-10",
+        "pred": "2026-11-10",
+        "hit": true
+      },
+      "target": {
+        "gold": [
+          "本科生",
+          "研究生"
+        ],
+        "pred": [
+          "硕士研究生",
+          "本科生"
+        ],
+        "tp": 2
+      },
+      "conditions": {
+        "gold": [
+          "师范类专业优先",
+          "全程参与",
+          "服从管理"
+        ],
+        "pred": [
+          "全程参与",
+          "服从管理",
+          "师范类专业优先"
+        ],
+        "tp": 3
+      },
+      "materials": {
+        "gold": [
+          "报名表"
+        ],
+        "pred": [
+          "报名表"
+        ],
+        "tp": 1
+      },
+      "engine": "rule",
+      "confidence": 0.88,
+      "needs_review": false
+    }
+  ]
+}

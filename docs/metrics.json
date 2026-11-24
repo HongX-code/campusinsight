@@ -1,0 +1,42 @@
+{
+  "generated_at": "2026-11-24 00:16:28",
+  "python": "3.12",
+  "source": "现场执行，见 evidence 数组的 command / exit_code",
+  "scale": {
+    "python_lines": 10434,
+    "frontend_lines": 3858,
+    "total_lines": 14292,
+    "scripts_lines": 3497,
+    "html_lines": 497,
+    "js_lines": 1765,
+    "css_lines": 1596,
+    "endpoints": 34,
+    "docs_md": 21,
+    "screenshots": 20,
+    "views": 7
+  },
+  "checks": {
+    "smoke_passed": 143,
+    "smoke_failed": 1,
+    "mutation_detected": 0,
+    "mutation_total": 11,
+    "mutation_baseline_ok": false,
+    "gate_stages": 9,
+    "gate_passed": 0,
+    "verify_items": 0,
+    "verify_failed": 0,
+    "verify_skipped": 0,
+    "prompts": 0,
+    "skeleton": 0,
+    "http_ok": 0,
+    "http_total": 8
+  },
+  "evidence": [],
+  "boundaries": [
+    "华为云 RDS for MySQL / DCS for Redis / MaaS 的真实连通截图与耗时",
+    "公网部署、域名访问与并发压测结果",
+    "CodeArts 实操会话导出与七类过程截图（当前为方案、工具与空骨架）",
+    "人工阅读对照实验（因此材料不写任何效率提升百分比）",
+    "Android / HarmonyOS 真机安装为应用、断网离线壳表现与两档视口真机截图（桌面浏览器巡检已通过，但不替代真机结论；见 docs/deployment.md 第 7.5 节清单）"
+  ]
+}

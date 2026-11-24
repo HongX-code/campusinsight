@@ -1,0 +1,31 @@
+# 本地/单机容器交付：只起一个 Web 服务，数据库与缓存通过环境变量接云上 RDS/DCS。
+# 用法：
+#   docker compose -f deploy/docker/docker-compose.yml up -d --build
+#   docker compose -f deploy/docker/docker-compose.yml logs -f
+#   docker compose -f deploy/docker/docker-compose.yml down
+services:
+  web:
+    build:
+      context: ../..
+      dockerfile: deploy/docker/Dockerfile
+    image: gaoxiao-zhixun:local
+    container_name: gaoxiao-zhixun
+    ports:
+      - "8000:8000"
+    environment:
+      APP_HOST: "0.0.0.0"
+      APP_PORT: "8000"
+      DATABASE_URL: "${DATABASE_URL:-}"
+      REDIS_URL: "${REDIS_URL:-}"
+      LLM_PROVIDER: "${LLM_PROVIDER:-none}"
+      LLM_BASE_URL: "${LLM_BASE_URL:-}"
+      LLM_API_KEY: "${LLM_API_KEY:-}"
+      LLM_MODEL: "${LLM_MODEL:-}"
+      LLM_TIMEOUT: "${LLM_TIMEOUT:-45}"
+      CRAWL_ALLOWED_DOMAINS: "${CRAWL_ALLOWED_DOMAINS:-whut.edu.cn,edu.cn,ac.cn}"
+    volumes:
+      - zhixun-data:/app/data
+    restart: unless-stopped
+
+volumes:
+  zhixun-data:

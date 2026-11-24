@@ -1,0 +1,25 @@
+[Unit]
+Description=CampusInsight (gaoxiao-zhixun) FastAPI service
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=gaoxiao
+Group=gaoxiao
+WorkingDirectory=/opt/gaoxiao-zhixun
+EnvironmentFile=/etc/gaoxiao-zhixun/env
+# 单进程：与项目「单 FastAPI 进程」的架构约束一致
+ExecStart=/opt/gaoxiao-zhixun/.venv/bin/uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers 1 --proxy-headers
+Restart=always
+RestartSec=3
+TimeoutStopSec=20
+
+# 基础加固
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=full
+ReadWritePaths=/opt/gaoxiao-zhixun/data
+
+[Install]
+WantedBy=multi-user.target
