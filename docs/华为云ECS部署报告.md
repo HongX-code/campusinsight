@@ -1,4 +1,4 @@
-# 高校智讯 · 华为云 ECS 部署报告
+﻿# 高校智讯 · 华为云 ECS 部署报告
 
 > 结论：项目已真实部署到华为云 ECS 并通过公网验证（2026-11-23 完成）。
 > 部署工具为工程内 CodeArts `auto-deploy` 自动化脚本（与 CodeArts 插件同一套华为云 API 通道）。
@@ -124,3 +124,110 @@ scp -i <私钥路径> root@<ECS_PUBLIC_IP>:/opt/auto-deploy/gaoxiao-zhixun/curre
 
 合计 **21 项接口/功能断言全部通过**，浏览器追问交互复验通过；本地 `codearts_tools.py verify` 42/42 全绿。
 结论：部署在华为云上的功能**正常可用、链路完整**。
+
+## 8. 重新开机与版本同步（2026-11-24）
+
+### 8.1 故障现象与定位
+
+上午发现公网 `<ECS_PUBLIC_IP>:8000` 与 `:22` 全部不可达，HTTP 健康检查超时、ICMP 不通。
+排查过程与结论：
+
+| 步骤 | 命令/操作 | 输出 | 判断 |
+| --- | --- | --- | --- |
+| 端口探测 | `Test-NetConnection <ECS_PUBLIC_IP> -Port 8000/22` | 均 `False` | 非单点端口问题 |
+| 本机出口 IP | `myip.ipip.net` | `<DEPLOYER_EGRESS_IP>` | 出口在安全组放行名单内，排除网络出口被挡 |
+| 刷新云状态 | `terraform apply -refresh-only -auto-approve` | `Resources: 0 added, 0 changed, 0 destroyed` | 资源未丢失、未被销毁 |
+| 读实例真实状态 | `terraform show -json` | `status = SHUTOFF`、`updated_at = 2026-11-24T02:37:50Z` | **实例被关机** |
+| EIP 状态 | 同上 | `status = BOUND`、`associate_id` 存在 | 弹性 IP 仍绑定，未释放 |
+
+结论：不是欠费停服、不是安全组、不是代码问题，而是**云主机被关机**。
+
+### 8.2 开机操作（真实执行）
+
+provider `huaweicloud 1.90.0` 的 `power_action` 只接受 `[ON OFF REBOOT FORCE-OFF FORCE-REBOOT]`，
+先误写 `"start"` 被 plan 拒绝（`expected power_action to be one of [...]`），改为 `"ON"` 后通过：
+
+```hcl
+# .auto-deploy/terraform/ecs.tf
+resource "huaweicloud_compute_instance" "app" {
+  # ...（其余配置不变）
+  power_action = "ON"
+}
+```
+
+```bash
+terraform plan   # Plan: 0 to add, 1 to change, 0 to destroy（仅 + power_action = "ON"）
+terraform apply -auto-approve
+# → Modifications complete after 32s
+# → Apply complete! Resources: 0 added, 1 changed, 0 destroyed.
+```
+
+**没有重建实例、没有更换 IP、磁盘数据与数据库全部保留。**
+
+### 8.3 开机后验证
+
+| 项目 | 命令 | 结果 |
+| --- | --- | --- |
+| SSH 端口 | `Test-NetConnection :22` | OPEN |
+| 应用端口 | `Test-NetConnection :8000` | OPEN |
+| 健康检查 | `GET /api/health` | `HTTP 200`，`status=ok`，`database.ok=true` |
+| 服务状态 | `systemctl is-active gaoxiao-zhixun` | `active`（且 `enabled`，随开机自启） |
+
+### 8.4 代码同步（本地 → 云端）
+
+此前有两批改动只在本地、未上线：详情抽屉的视图刷新修复，以及**角色账号登录改造**。
+先比对两端 md5 再上传，避免全量覆盖误删云端数据：
+
+```text
+本地文件 60  云端文件 58  相同 53
+[修改] 5   app/static/css/style.css、app/static/js/app.js、app/templates/index.html、
+            scripts/codearts_tools.py、tests/test_smoke.py
+[新增] 2   scripts/publish_gitee.py、scripts/publish_github.py
+[云端独有] 0
+```
+
+逐个 `scp` 上传后重新生成清单：**本地 60 / 云端 60 / 相同 60**，完全一致。
+随后 `chown -R deploy:deploy`（scp 以 root 落地会破坏服务属主）、清理 `__pycache__`、`systemctl restart`。
+
+### 8.5 上线后复验（2026-11-24）
+
+云端接口断言（直打公网 API）：
+
+| 分组 | 断言 | 结果 |
+| --- | --- | --- |
+| 健康 | `/api/health` 200、`status=ok`、`database.ok=true`、六端声明齐全 | 通过 |
+| 角色账号 | `/api/users` 200、3 个角色（张明/李雨/王浩）、姓名完整 | 通过 |
+| 通知 | `/api/notices?page=1&size=10` 200、`total=78`、返回 10 条 | 通过 |
+| 匹配 | `/api/users/1/matches` 200、含三档结论与逐条理由 | 通过 |
+| 日程/待办 | `/api/users/1/agenda` 200、`/api/users/1/tasks` 200 | 通过 |
+| 看板 | `/api/dashboard/stats` 200（overview/categories/engines/modes/genres/deadlines） | 通过 |
+| 采集 | `/api/sources` 200 | 通过 |
+| AI | `/api/ai/status` 200、`/api/qa/ask` 200 返回非空答案（2341 字符） | 通过 |
+| 待办闭环 | POST 创建 → PATCH 推进 → DELETE 清理，全部 200 | 通过 |
+| 静态资源 | style.css(80KB)/app.js(85KB)/manifest/sw.js 全部 200 | 通过 |
+
+合计 **29/29 全通过**。
+
+公网真实浏览器端到端（Edge headless 直连公网地址）：
+
+| 步骤 | 断言 | 结果 |
+| --- | --- | --- |
+| 首页 | 可访问，标题正确 | 通过 |
+| 未登录态 | 顶栏显示「登录」，不默认替用户选人 | 通过 |
+| 登录弹窗 | 点击头像打开，3 张角色卡片渲染，姓名正确 | 通过 |
+| 选择角色 | 顶栏切换为「张明」，弹窗自动关闭 | 通过 |
+| 匹配页 | 显示「当前登录：张明 · 大三 · 信息管理与信息系统」，渲染 15 条匹配 | 通过 |
+| 登录持久化 | 刷新页面后登录态保持 | 通过 |
+| 通知/看板 | 列表 12 条、看板统计内容完整 | 通过 |
+| AI 助手 | 双页签 `chat,lab`（无「多端接入」），解析实验室可切换 | 通过 |
+| 注销 | 清除登录态后回到未登录 | 通过 |
+| 运行质量 | 0 console 错误、0 网络请求失败 | 通过 |
+
+合计 **17/17 全通过**。截图见 `docs/screenshots/cloud-01-home.png` ～ `cloud-05-qa.png`。
+
+### 8.6 本次结论
+
+- 云主机已重新开机，公网 `http://<ECS_PUBLIC_IP>:8000/` 恢复访问，数据零丢失。
+- 本地与云端代码完全一致（60/60 文件 md5 相同），角色账号登录改造已正式上线。
+- 接口 29/29、浏览器 17/17 全部通过，服务 `enabled` 随开机自启。
+- **计费状态**：ECS 与 EIP 均在运行并计费；长期不用请按第 5 节执行 `terraform destroy` 释放。
