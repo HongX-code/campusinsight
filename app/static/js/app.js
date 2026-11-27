@@ -1111,6 +1111,8 @@ async function renderMatch() {
   if (!u) {
     $("#matchSummary").textContent = "";
     $("#profileCard").innerHTML = "";
+    const rp = $("#recoPanel");
+    if (rp) rp.hidden = true;
     $("#matchList").innerHTML = '<div class="card empty">请先点击右上角头像，选择一个角色账号登录。<br />登录后这里会按该角色的专业、年级与兴趣，给出三档匹配结论与逐条理由。</div>';
     return;
   }
@@ -1140,14 +1142,97 @@ async function renderMatch() {
           <span class="lv">${lvName[m.level] || ""}</span>
           <div class="track"><i style="width:${score}%"></i></div>
         </div>
+        ${factorChips(m.factors)}
         <div class="reasons">
           ${m.reasons.map((r) => `<div class="reason ${r.type}"><span class="dot"></span><span>${esc(r.text)}</span></div>`).join("")}
         </div>
       </div>`;
     }).join("");
+    loadRecommendations(u);
   } catch (e) {
     $("#matchList").innerHTML = `<div class="card empty">加载失败：${esc(e.message)}</div>`;
   }
+}
+
+/* 匹配卡片里的分项依据：只标出真正影响结论的几项，避免七个标签堆成噪音。
+ * state=ok 且贡献高的给「正向」，conflict/bad 给「否决」，其余中性省略。 */
+const FACTOR_SHORT = {
+  target: "适用对象", major: "专业限制", interest: "兴趣方向",
+  condition: "硬性条件", urgency: "时效紧迫", freshness: "内容新鲜", quality: "信息完整",
+};
+function factorChips(factors) {
+  if (!Array.isArray(factors) || !factors.length) return "";
+  const keep = factors.filter((f) => f.state === "bad" || f.contribution >= 0.06);
+  if (!keep.length) return "";
+  const chips = keep.map((f) => {
+    const cls = f.state === "bad" ? "bad" : (f.contribution >= 0.12 ? "good" : "");
+    const label = FACTOR_SHORT[f.key] || f.label || f.key;
+    return `<span class="fchip ${cls}" title="${esc(f.note || "")}">${esc(label)}</span>`;
+  });
+  return `<div class="match-factors">${chips.join("")}</div>`;
+}
+
+/* 推荐位：召回→排序→重排三段式接口，返回「为什么推给你」而不是只给一个分数 */
+async function loadRecommendations(u) {
+  const panel = $("#recoPanel");
+  if (!panel) return;
+  if (!u) { panel.hidden = true; return; }
+  try {
+    const d = await api(`/api/users/${u.id}/recommendations?limit=6`);
+    const items = d.items || [];
+    if (!items.length) { panel.hidden = true; return; }
+    panel.hidden = false;
+    const meta = d.meta || {};
+    $("#recoMeta").textContent =
+      `从 ${meta.candidate_total || 0} 条里筛出 ${meta.recalled || 0} 条候选，按七因子排序后取前 ${items.length} 条`;
+    $("#recoList").innerHTML = items.map((r, i) => {
+      const score = Math.max(5, Math.min(98, r.score));
+      const cat = esc(r.category || "");
+      return `<div class="reco-card" onclick="openNotice(${r.notice_id})">
+        <div class="reco-rank">${i + 1}</div>
+        <div class="reco-body">
+          <div class="reco-line">
+            <span class="tag" data-cat="${cat}">${cat}</span>
+            <span class="reco-t">${esc(r.notice.title)}</span>
+            <span class="score">${score} 分</span>
+          </div>
+          <div class="reco-why">${esc(r.why || "")}</div>
+        </div>
+      </div>`;
+    }).join("");
+  } catch (e) {
+    panel.hidden = true;
+  }
+}
+
+async function toggleRecoExplain() {
+  const box = $("#recoExplain");
+  if (!box) return;
+  if (!box.hidden) { box.hidden = true; return; }
+  if (!box.dataset.loaded) {
+    try {
+      const d = await api("/api/recommendation-model");
+      const rows = (d.factors || []).map((f) => {
+        const pct = Math.round((f.weight || 0) * 100);
+        return `<div class="rx-row">
+          <span class="rx-name">${esc(f.label)}</span>
+          <span class="rx-bar"><i style="width:${pct}%"></i></span>
+          <span class="rx-pct">${pct}%</span>
+          <span class="rx-desc">${esc(f.desc || "")}</span>
+        </div>`;
+      }).join("");
+      const pipe = (d.pipeline || []).map((s) => `<li>${esc(s)}</li>`).join("");
+      box.innerHTML = `<div class="rx-title">七因子加权模型（满分 98，${d.threshold} 分以上判为符合）</div>
+        ${rows}
+        <div class="rx-title">三段式流程</div>
+        <ol class="rx-pipe">${pipe}</ol>
+        <div class="rx-note">${esc(d.cold_start || "")}</div>`;
+      box.dataset.loaded = "1";
+    } catch (e) {
+      box.innerHTML = `<div class="hint">说明加载失败：${esc(e.message)}</div>`;
+    }
+  }
+  box.hidden = false;
 }
 
 /* ---------------- AI 助手 ---------------- */
@@ -2226,6 +2311,9 @@ function bindEvents() {
     state.matchLevel = b.dataset.level;
     renderMatch();
   }));
+
+  /* 推荐算法说明面板：按需拉取 /api/recommendation-model，避免首屏多一次请求 */
+  $("#recoExplainBtn")?.addEventListener("click", toggleRecoExplain);
 
   /* ---- 多端接入 ---- */
   $("#btnRefreshMobile").addEventListener("click", renderMobile);

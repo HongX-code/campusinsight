@@ -231,3 +231,122 @@ terraform apply -auto-approve
 - 本地与云端代码完全一致（60/60 文件 md5 相同），角色账号登录改造已正式上线。
 - 接口 29/29、浏览器 17/17 全部通过，服务 `enabled` 随开机自启。
 - **计费状态**：ECS 与 EIP 均在运行并计费；长期不用请按第 5 节执行 `terraform destroy` 释放。
+
+## 9. 再次部署与账号冻结（2026-11-27 ～ 11-28）
+
+### 9.1 再次开机（第三次）
+
+隔日复查时公网 <ECS_PUBLIC_IP> 的 22 / 8000 端口均不可达，实例再次处于 `SHUTOFF`。
+`terraform apply -refresh-only -auto-approve` 返回 `0 added, 0 changed, 0 destroyed`，
+因为 `power_action` 是**动作字段**而非状态字段，刷新不会把它纠正回实际状态，`terraform plan` 显示 `No changes`。
+
+要让 provider 重新执行一次开机，必须先制造差异。标准做法：
+
+```bash
+terraform state pull > state-edit.json          # v4 原始格式，resources 在顶层
+python .auto-deploy/terraform/strip_power_action.py   # 删除 attributes.power_action，serial + 1
+terraform state push state-edit.json
+terraform plan                                   # → Plan: 0 to add, 1 to change, 0 to destroy
+terraform apply -auto-approve                    # → Modifications complete after 33s
+```
+
+结果：`Apply complete! Resources: 0 added, 1 changed, 0 destroyed.`，实例 id、EIP、系统盘数据均未变，
+开机后 22 与 8000 端口恢复，`/api/health` 返回 200，`systemctl is-active` = `active`、`is-enabled` = `enabled`。
+
+> 注意：PowerShell 5 的 `Out-File -Encoding utf8` 在本机写出的是 **UTF-16LE**，
+> 用 Python 读该文件要按 `utf-16` 解码，否则报 `UnicodeDecodeError: 'utf-8' codec can't decode byte 0xff`。
+
+### 9.2 代码同步（39 个文件）
+
+用 manifest 比对（md5 + 相对路径）确认差异，而不是盲目全量覆盖：
+
+| 项 | 数量 |
+| --- | --- |
+| 本地文件 | 76 |
+| 云端文件 | 60 |
+| 内容相同 | 37 |
+| 修改 | 23 |
+| 新增 | 16 |
+| 上传后复查一致 | 76 / 76 |
+
+修改的 23 个文件集中在应用层与自检脚本（`app/services/*.py`、`app/static/css/style.css`、
+`app/static/js/app.js`、`app/templates/index.html`、`scripts/*.py`、`tests/test_smoke.py`）；
+新增的 16 个是五个创新点与微信小程序的实现（`app/routers/mobile.py`、
+`app/services/{checklist,conflict,ical,tables,timeline,wechat}.py`、`app/static/css/mobile.css`
+及对应自检脚本）。`requirements.txt` 无需改动——新增模块只用到标准库与既有依赖。
+
+上传后的固定动作（缺一条就会出问题）：`chown -R deploy:deploy` → 清理 `__pycache__` → `systemctl restart`。
+scp 以 root 落地会把服务文件属主改成 root，重启后应用无写权限；旧 `__pycache__` 则可能加载过期的编译产物。
+
+重启日志确认新增字段自动补齐、数据库就绪、服务正常监听：
+
+```
+已补充字段 notice_analysis.timeline
+数据库已就绪：SQLite（本地）
+高校智讯 v1.0.0 启动完成
+Uvicorn running on http://0.0.0.0:8000
+```
+
+### 9.3 云端接口验证（25/25）
+
+| 组别 | 覆盖内容 | 结果 |
+| --- | --- | --- |
+| 基础 | 健康检查（db / 版本 / 七端平台）、首页、静态资源 5 个 | 通过 |
+| 数据 | 角色 3 个、通知 78 条、看板 7 字段、来源、系统信息 | 通过 |
+| 匹配 | 个性化匹配、七因子 `factors`、三档 `counts` | 通过 |
+| 问答 | 结构化问答、`top_k` 透传（1→1 条、4→4 条）、引用编号 | 通过 |
+| 创新点 | 时间轴、材料清单、冲突检测、日历导出（5 事件）、待办增删改闭环 | 通过 |
+| 小程序 | 无票据 401 拒绝、微信登录换 token、带票据 bootstrap 六字段 | 通过 |
+| 安全 | 数据脱敏扫描 0 泄漏、404 语义 | 通过 |
+| 降级 | 未配置 LLM 时如实返回 `llm_available=false`、`active_engine=rule` | 通过 |
+
+合计 **25/25 全通过**。
+
+### 9.4 公网浏览器端到端（21/21）
+
+用真实浏览器（1440×900 与 390×844 两种视口）访问公网地址，覆盖首屏、导航、登录、匹配、问答与移动端布局：
+
+| 场景 | 断言 |
+| --- | --- |
+| 未登录态 | 顶栏显示「登录」，匹配页提示先选角色账号，不默认为用户选人 |
+| 角色登录 | 弹窗 3 张角色卡，选中后顶栏切换为张明，登录态写入本地存储 |
+| 登录保持 | 刷新页面后仍是同一角色，匹配结论不丢 |
+| 匹配与推荐 | 身份条「当前登录：张明 · 大三 · 信息管理与信息系统」，推荐位与因子标签正常渲染 |
+| AI 助手 | 双页签 `chat,lab`，问答返回带引用的结构化答案 |
+| 移动端 | 390 宽下无横向溢出，移动端样式生效 |
+| 运行质量 | 0 console 错误、0 网络请求失败 |
+
+合计 **21/21 全通过**，截图见 `docs/screenshots/cloud-01-home.png` ～ `cloud-05-dashboard.png`。
+
+### 9.5 交付前修掉的一处真实泄露
+
+云端数据库与本地演示库是**两套不同数据**，云端从未做过脱敏。部署后运行
+`python scripts/sanitize_demo_db.py --check`，报出 11 项残留：3 个个人邮箱、2 个内网 IP、3 个手机号等，
+这些内容通过 `/api/notices` 是公网可读的。
+
+处理方式：先 `cp -a data/gaoxiao_zhixun.db` 备份，再执行 `sanitize_demo_db.py`（13 行被改写），
+复查残留 **0 项**；数据条数不变（通知 78 / 解析 78），联系方式统一替换为 example 域占位值，
+最后修正文件属主并重启。此类检查必须针对**云端那份库**单独跑一次，只查本地库不算验证。
+
+### 9.6 当前状态与阻断（必须如实记录）
+
+2026-11-28 复查时实例再次处于 `SHUTOFF`，按 9.1 的流程执行开机，**apply 失败**，原文：
+
+```
+Error: Doing power action (ON) for instance (<ECS_INSTANCE_ID>) failed:
+waiting power action (ON) for instance (<ECS_INSTANCE_ID>) failed:
+Job failed with code Common.0021: CollectInfoTask-fail: failed sub jobs: ff808081a0ed1f39...,
+first failed reason: ServerActionNextBatch-fail:
+The server <ECS_INSTANCE_ID> is freezed.
+```
+
+`is freezed` 表示**云账号或实例被冻结**（欠费 / 风控 / 实名未通过），与代码、安全组、网络均无关；
+加 `-refresh=false` 重试仍是同一错误，反复重试没有意义。这一项只能由账号持有人在华为云控制台处理。
+
+因此本轮结论必须分成两半写：
+
+- **已完成的**：本地代码、文档、自检全部完成并验证（推荐算法、问答精准度、前端接线、44 项交付件体检通过）；
+- **未完成的**：这批改动**尚未同步到云端**，云端运行的仍是 2026-11-27 那一版（该版本本身已 25/25 + 21/21 验证通过）。
+
+账号恢复后的补齐步骤只有三条：按 9.1 开机 → 按 9.2 上传差异文件 → 按 9.3 / 9.4 复验。
+在此之前，任何「已部署最新版」的表述都不成立。

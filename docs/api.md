@@ -344,9 +344,11 @@ C1—C11 校验结果，全程不写入数据库。
 | PUT | `/api/users/{id}` | 修改资料 |
 | DELETE | `/api/users/{id}` | 删除 |
 | GET | `/api/users/{id}/matches` | 个性化匹配，参数 `only_open=true` 只返回未截止 |
+| GET | `/api/users/{id}/recommendations` | 通知推荐位，参数 `limit`（默认 6，1—20）、`include_expired`（默认 false） |
+| GET | `/api/recommendation-model` | 推荐算法说明：七因子权重、阈值、分类上限、三段式流程、冷启动说明 |
 | GET | `/api/users/{id}/agenda` | 时间管理，参数 `days` 默认 30 |
 
-匹配返回结构：
+匹配返回结构（`factors` 为七因子的分项贡献，`score` 由加权和映射而来）：
 
 ```json
 {
@@ -358,6 +360,14 @@ C1—C11 校验结果，全程不写入数据库。
       "level": "match",
       "level_text": "符合",
       "score": 82,
+      "fit": 0.8213,
+      "category": "学科竞赛",
+      "factors": [
+        { "key": "target", "label": "适用对象", "raw": 1.0, "weight": 0.28,
+          "contribution": 0.28, "state": "good", "note": "你是本科生，满足「本科生」" },
+        { "key": "interest", "label": "兴趣方向", "raw": 1.0, "weight": 0.20,
+          "contribution": 0.2, "state": "good", "note": "与你关注的「学科竞赛」一致" }
+      ],
       "reasons": [
         { "type": "good", "text": "你是本科生，满足「本科生」的适用对象要求" },
         { "type": "good", "text": "与你关注的「学科竞赛」方向一致" },
@@ -368,8 +378,30 @@ C1—C11 校验结果，全程不写入数据库。
 }
 ```
 
-三级结论：`match`（符合）、`maybe`（可能符合，存在未明确的资格项）、`no`（暂不符合，有硬性冲突）。
-`reasons` 每条都指向具体判断依据，前端不可省略。
+三级结论：`match`（符合）、`maybe`（可能符合，存在未明确的资格项或兴趣不相关）、`no`（暂不符合，有硬性冲突）。
+硬冲突时分数会被一并压到阈值以下，不会出现"高分但不符合"的矛盾展示。`reasons` 每条都指向具体判断依据，前端不可省略。
+
+推荐位返回结构（`why` 是「为什么推给你」的一句话，`meta.skipped` 给出每条没推的原因计数）：
+
+```json
+{
+  "user": { "id": 1, "name": "张同学" },
+  "items": [
+    { "notice_id": 42, "score": 94, "fit": 0.9569, "category": "科研项目",
+      "why": "你关注「科研项目」，且 3 天内截止",
+      "notice": { "id": 42, "title": "…", "category": "科研项目" },
+      "deadline": "2026-12-01",
+      "factors": [ "…" ], "reasons": [ "…" ] }
+  ],
+  "meta": {
+    "candidate_total": 78, "recalled": 13, "returned": 6, "limit": 6,
+    "max_per_category": 2, "diversity_lambda": 0.72,
+    "skipped": { "no_analysis": 0, "not_actionable": 23, "expired": 35,
+                 "vetoed": 6, "duplicate": 2 },
+    "cold_start": "…", "weights": { "target": 0.28, "…": "…" }
+  }
+}
+```
 
 ## 7. 待办
 

@@ -40,6 +40,7 @@ FILLER_RE = re.compile(
     r"(适合我的|适合我|我的|这个|那个|这|那|它|"
     r"最近|近期|即将|马上|目前|现在|"
     r"什么时候|何时|几号|哪天|时候|"
+    r"在哪里|在哪儿|在哪|哪里|哪儿|"
     r"有哪些|哪些|有什么|什么|怎么样|怎么|如何|请问|麻烦|"
     r"可以|能否|需要|要求|介绍一下|一下|帮我|我想|知道|"
     r"吗|呢|啊|吧)"
@@ -185,31 +186,66 @@ def _as_text(value) -> str:
     return str(value)
 
 
+def _doc_frequency(notices: list[dict], terms: set[str]) -> dict[str, int]:
+    """统计每个查询词在多少条通知里出现过。
+
+    「通知」「报名」这类词几乎每条都有，区分度接近零；而「华为ICT大赛」
+    「推免」只出现在个别通知里，才真正决定该召回哪一条。用 df 做 IDF 加权，
+    把"常见词"的投票权重压下去，避免长文档靠堆砌常见词霸榜。
+    """
+    if not terms:
+        return {}
+    df: dict[str, int] = {t: 0 for t in terms}
+    for n in notices:
+        blob = (n.get("title") or "").lower() + " " + (n.get("content") or "").lower()
+        for t in terms:
+            if t in blob:
+                df[t] += 1
+    return df
+
+
+def _idf(df: int, total: int) -> float:
+    """平滑 IDF：词在全部通知里都出现时趋近 0.5，只在一条里出现时接近峰值。"""
+    import math
+
+    return round(0.5 + math.log(1.0 + (max(total, 1) + 1.0) / (df + 1.0)), 4)
+
+
 def retrieve(query: str, notices: list[dict], top_k: int = 3) -> list[dict]:
     base_terms = _terms(query)
     if not base_terms:
         return []
     extra_terms = _synonym_terms(query, base_terms)
     domain = detect_domain(query)
+    df = _doc_frequency(notices, base_terms)
+    total_docs = max(len(notices), 1)
+    idf = {t: _idf(df.get(t, 0), total_docs) for t in base_terms}
+
     scored = []
     for n in notices:
         title = (n.get("title") or "").lower()
         body = (n.get("content") or "").lower()
         structured = " ".join(_as_text(n.get(k)) for k in STRUCTURED_TEXT_FIELDS).lower()
+        # 长度归一：同样命中，长正文不该比短通知得分高一个量级。
+        # 用 1/log(长度)，并设下限避免极短文本被过度放大。
+        body_scale = 1.0 / max(1.0, (len(body) ** 0.5) / 6.0)
         score = 0.0
         matched: set[str] = set()
         for t in base_terms | set(extra_terms):
-            weight = 1.0 if t in base_terms else 0.5
+            base = t in base_terms
+            weight = 1.0 if base else 0.5
+            # 同义词只借原词的 IDF，避免「报名」这类高频原词把同义词也拉平
+            boost = idf.get(t, 1.0) if base else idf.get(extra_terms[t], 1.0)
             if t in title:
-                score += title.count(t) * 3.0 * weight
-                matched.add(t if t in base_terms else extra_terms[t])
+                score += title.count(t) * 3.0 * weight * boost
+                matched.add(t if base else extra_terms[t])
             if t in body:
-                score += min(body.count(t), 6) * 1.0 * weight
-                matched.add(t if t in base_terms else extra_terms[t])
+                score += min(body.count(t), 6) * 1.0 * weight * boost * body_scale
+                matched.add(t if base else extra_terms[t])
             elif structured and t in structured:
                 # 结构化字段只补分，不冒充正文命中次数
-                score += 0.8 * weight
-                matched.add(t if t in base_terms else extra_terms[t])
+                score += 0.8 * weight * boost
+                matched.add(t if base else extra_terms[t])
         if n.get("category") in CATEGORIES and n["category"] in query:
             score += 2.0
         if domain:
@@ -292,6 +328,22 @@ def _focus_exact(query: str, hits: list[dict]) -> list[dict]:
     return exact or hits
 
 
+def _dedupe_titles(hits: list[dict]) -> list[dict]:
+    """按归一化标题去重，避免同一通知的多个来源副本重复占位。
+
+    保留得分最高的那条（hits 已按分数降序），后续同名条目直接丢弃。
+    """
+    seen: set[str] = set()
+    out: list[dict] = []
+    for h in hits:
+        key = _norm_subject(h.get("title", ""))
+        if not key or key in seen:
+            continue
+        seen.add(key)
+        out.append(h)
+    return out
+
+
 def _best_sentences(query: str, content: str, limit: int = 2) -> list[str]:
     terms = _terms(query)
     ranked = []
@@ -340,6 +392,10 @@ def _citations(query: str, hits: list[dict], intent: str = "") -> list[dict]:
             "notice_id": h["id"],
             "title": h.get("title", ""),
             "source_url": h.get("source_url", ""),
+            "category": h.get("category", ""),
+            # 带上截止日期，前端才能在引用列表里直接标出「已截止」，
+            # 不用再回头去猜每条引用是否还开放报名。
+            "deadline": h.get("deadline") or "",
             "snippet": snippet,
             "score": h["score"],
         })
@@ -384,7 +440,8 @@ def _section_excerpt(content: str, keywords: tuple[str, ...], limit: int = 100) 
     return ""
 
 
-def _structured_answer(query: str, hits: list[dict], intent: str) -> tuple[str, list[dict]]:
+def _structured_answer(query: str, hits: list[dict], intent: str,
+                       open_expired: bool = False) -> tuple[str, list[dict]]:
     """用已落库的结构化字段组装答案；每个结论带可核对的 [n] 编号。"""
     lead = {
         "materials": "我查了已收录的通知，关于需要准备的材料，整理如下：",
@@ -396,11 +453,27 @@ def _structured_answer(query: str, hits: list[dict], intent: str) -> tuple[str, 
         "list": f"在已收录的通知里，与「{(detect_domain(query) or '该主题')}」相关的可办理事项共 {len(hits)} 条：",
         "general": "根据已收录通知，与你这个问题最相关的信息如下：",
     }[intent]
+    # 只命中一条时改成单数口吻，避免"整理如下"后面只跟一行、读起来像答案缺失
+    if len(hits) == 1:
+        lead = {
+            "materials": "在已收录的通知里，需要准备的材料是：",
+            "deadline": "在已收录的通知里，截止时间是这样写的：",
+            "condition": "在已收录的通知里，申请条件是：",
+            "contact": "在已收录的通知里，联系方式是：",
+            "location": "在已收录的通知里，地点是：",
+            "method": "在已收录的通知里，报名方式是：",
+            "list": f"在已收录的通知里，与「{(detect_domain(query) or '该主题')}」相关的可办理事项有 1 条：",
+            "general": f"与「{(detect_domain(query) or '你的问题')}」最相关的通知是这一条：",
+        }[intent]
     if intent == "deadline" and RECENT_RE.search(query or ""):
         lead = "按截止日期由近到远排列，已收录通知中尚未截止的事项如下："
     if intent == "list" and OPEN_RE.search(query or ""):
         lead = (f"在已收录通知中，与「{detect_domain(query) or '该主题'}」相关且尚未截止的"
                 f"共 {len(hits)} 条：")
+        if open_expired:
+            # 全部已过期时不能再说"尚未截止"，如实告知并保留原文，方便核对是哪几条。
+            lead = (f"在已收录通知中，与「{detect_domain(query) or '该主题'}」相关的 "
+                    f"{len(hits)} 条都已过报名截止时间，下面列出原通知供你核对：")
 
     lines: list[str] = [lead]
     used_rows: list[dict] = []
@@ -575,15 +648,34 @@ def answer(query: str, notices: list[dict], top_k: int = 3) -> dict:
 
     hits = _focus_hits(query, hits)
     hits = _focus_exact(query, hits)
-    # 「可以报名」只列尚未截止、且确实可办理的通知：
-    # 过期通知不当机会推荐，新闻稿（genre=news / actionable=False）也不混进清单。
-    if intent == "list" and OPEN_RE.search(query or ""):
+    # 同一份通知可能被重复录入（不同来源站各转一次），标题完全一致时只保留一条，
+    # 否则清单里会出现两条一模一样的「研究生学术论坛」占掉两个名额。
+    hits = _dedupe_titles(hits)
+    # 清单类问题（「有哪些…」「适合我的…有哪些」）要先分「还能报 / 已截止」：
+    # 能报的排前面；一条能报的都没有时如实说已截止，不假装是可办理事项。
+    open_expired = False
+    if intent == "list":
         today = dt.date.today().isoformat()
-        open_hits = [h for h in hits
-                     if h.get("genre") != "news" and h.get("actionable") is not False
-                     and (not h.get("deadline") or str(h["deadline"]) >= today)]
-        if open_hits:
-            hits = open_hits[:limit_k]
+        # 新闻稿不是"事项"，清单里列出来等于答非所问，先整体剔除。
+        candidates = [h for h in hits
+                      if h.get("genre") != "news" and h.get("actionable") is not False]
+        if candidates:
+            hits = candidates
+        live = [h for h in hits
+                if not h.get("deadline") or str(h["deadline"]) >= today]
+        if OPEN_RE.search(query or ""):
+            # 「可以报名」只列尚未截止的，过期的不当机会推荐
+            if live:
+                hits = live[:limit_k]
+            else:
+                open_expired = True
+                hits = hits[:max(limit_k, 5)]
+        else:
+            # 只是问「有哪些」：仍按「能报优先」排序，让首屏先看到还有机会的
+            stale = [h for h in hits if h not in live]
+            if live or stale:
+                hits = (live + stale)[:limit_k]
+                open_expired = not live
     citations = _citations(query, hits, intent)
     context = "\n\n".join(
         f"[{i + 1}] 标题：{h.get('title','')}\n内容：{(h.get('content') or '')[:900]}\n"
@@ -619,7 +711,7 @@ def answer(query: str, notices: list[dict], top_k: int = 3) -> dict:
         except Exception as exc:
             fallback_reason = f"大模型暂不可用，已使用结构化抽取回答：{str(exc)[:80]}"
 
-    text, used_rows = _structured_answer(query, hits, intent)
+    text, used_rows = _structured_answer(query, hits, intent, open_expired=open_expired)
     ok, invalid, note = citation_check(text, len(citations))
     if invalid:
         # 结构化答案理论上不会越界；真出现时退回纯原文摘取，绝不带病输出。

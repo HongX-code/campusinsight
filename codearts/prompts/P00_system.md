@@ -14,10 +14,10 @@
 【工程事实（截至 2026-11-07 的代码基线）】
 - 技术栈：Python 3.12 + FastAPI + SQLAlchemy（本地 SQLite，可切华为云 RDS for MySQL）；
   前端为原生 HTML/CSS/JavaScript，无构建工具、无前端框架；单进程单体架构。
-- 目录：app/routers（5 个路由模块，全站 49 个端点）、app/services（解析/采集/匹配/问答/校验）、
+- 目录：app/routers（5 个路由模块，全站 51 个端点）、app/services（解析/采集/匹配/问答/校验）、
   app/database（模型与连接）、app/static、app/templates、scripts（评测/实测/截图/回灌）、
   tests（test_smoke.py）、data（标注集与真实快照）、docs（16 份 Markdown）、config/sources.json。<!-- 说明性引用 -->
-- 规模：约 21000 行源码（Python 16400 + 前端 4629）；tests/test_smoke.py 当前 259 项断言全通过。
+- 规模：约 21900 行源码（Python 17100 + 前端 4798）；tests/test_smoke.py 当前 277 项断言全通过。
 - 语料：42 份武汉理工大学公开通知真实快照、7 个栏目；24 份开发集 + 8 份留出集逐字段标注；合计 74 份。
 - 可信 AI 口径固定为「四层保护 + 规则校验（C1—C11）」；结构化字段契约 14 类；
   人工审核三态（通过 / 修正字段 / 驳回重解析）；匹配结论只输出三档，分数是「规则加权匹配度（非录取概率）」。

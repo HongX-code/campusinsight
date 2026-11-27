@@ -700,6 +700,112 @@ def main() -> int:
         check("年级命中时保持符合",
               mk({"grade_requirement": ["本科生", "大二"]})["level"] == "match")
 
+        # 12.4b 多因子加权与推荐位的可解释性
+        # 单点打分只能说明"结论对不对"，证明不了"为什么是这个分"。
+        # 这里钉住三件事：七个因子权重归一、分项贡献能算回总分、否决项必须同时压分。
+        from app.services.matcher import (                        # noqa: E402
+            FACTOR_WEIGHTS, MATCH_THRESHOLD, score_factors,
+        )
+        from app.services.recommender import (                    # noqa: E402
+            DIVERSITY_LAMBDA, MAX_PER_CATEGORY, explain, recommend,
+        )
+
+        check("七因子权重归一为 1",
+              abs(sum(FACTOR_WEIGHTS.values()) - 1.0) < 1e-9
+              and len(FACTOR_WEIGHTS) == 7, str(FACTOR_WEIGHTS))
+
+        scored_ok = score_factors(user2, {"id": 1, "category": "学科竞赛"}, base_a)
+        contrib_sum = sum(f["contribution"] for f in scored_ok["factors"])
+        check("分项贡献之和等于拟合度",
+              abs(contrib_sum - scored_ok["fit"]) < 1e-6,
+              f"贡献和 {contrib_sum:.4f} vs fit {scored_ok['fit']:.4f}")
+        check("拟合度映射到 5~98 分且过阈值判符合",
+              scored_ok["score"] >= MATCH_THRESHOLD
+              and 5 <= scored_ok["score"] <= 98,
+              f"score={scored_ok['score']} fit={scored_ok['fit']}")
+
+        vetoed = score_factors(user2, {"id": 1, "category": "学科竞赛"},
+                               {**base_a, "grade_requirement": ["研究生"]})
+        check("否决项把分数压到阈值以下而不是只改结论",
+              vetoed["conflict"] is True and vetoed["score"] < MATCH_THRESHOLD,
+              f"conflict={vetoed['conflict']} score={vetoed['score']}")
+
+        # 兴趣完全不相关：资格够也不该直接判"符合"，否则只关注竞赛的同学
+        # 会在首屏看到满屏"志愿服务 符合"。
+        off = match_one(
+            {"grade": "大二", "major": "信息管理与信息系统", "interests": ["竞赛"]},
+            {"id": 2, "category": "志愿服务"},
+            {**base_a, "category": "志愿服务"},
+        )
+        check("兴趣完全不相关时资格够也只判可能符合",
+              off["level"] == "maybe", f"level={off['level']} score={off['score']}")
+
+        cold = score_factors({"grade": "大二", "major": "", "interests": []},
+                             {"id": 3, "category": "学科竞赛"}, base_a)
+        interest_factor = [f for f in cold["factors"] if f["key"] == "interest"][0]
+        check("未填兴趣时兴趣因子取中性而非零分",
+              abs(interest_factor["raw"] - 0.5) < 1e-9,
+              f"raw={interest_factor['raw']}")
+
+        # 新鲜度：缺时间必须中性；有近期时间必须高于陈旧时间。
+        # base_a 没有 publish_time/created_at，所以缺时间分支是最常走的一条。
+        fresh_factor = [f for f in scored_ok["factors"] if f["key"] == "freshness"][0]
+        check("缺少发布时间时新鲜度取中性",
+              abs(fresh_factor["raw"] - 0.5) < 1e-9,
+              f"raw={fresh_factor['raw']} note={fresh_factor['note']}")
+
+        _reco_rows = [
+            {"id": 11, "title": "数学建模竞赛校内选拔", "category": "学科竞赛",
+             "analysis": {**base_a, "deadline": "2026-12-20"}},
+            {"id": 12, "title": "蓝桥杯校内选拔", "category": "学科竞赛",
+             "analysis": {**base_a, "deadline": "2026-12-18"}},
+            {"id": 13, "title": "ACM 校内选拔", "category": "学科竞赛",
+             "analysis": {**base_a, "deadline": "2026-12-16"}},
+            {"id": 14, "title": "华为 ICT 大赛", "category": "学科竞赛",
+             "analysis": {**base_a, "deadline": "2026-12-14"}},
+            {"id": 15, "title": "学术讲座：数字孪生", "category": "学术讲座",
+             "analysis": {**base_a, "category": "学术讲座", "deadline": "2026-12-12"}},
+            {"id": 16, "title": "已截止的竞赛", "category": "学科竞赛",
+             "analysis": {**base_a, "deadline": "2020-01-01"}},
+            {"id": 17, "title": "一条新闻稿", "category": "校园活动",
+             "analysis": {**base_a, "genre": "news", "actionable": False,
+                          "category": "校园活动"}},
+            # 同一份通知的两个来源副本：教务处与学院各发一次，标题只差外壳。
+            # 推荐位只有 6 格，必须只占一格。
+            {"id": 18, "title": "关于数学建模竞赛校内选拔的通知", "category": "学科竞赛",
+             "analysis": {**base_a, "deadline": "2026-12-20"}},
+        ]
+        reco = recommend(user2, _reco_rows, limit=6)
+        ids = [x["notice_id"] for x in reco["items"]]
+        check("推荐位不推已截止与新闻稿",
+              16 not in ids and 17 not in ids, str(ids))
+        check("同一通知的重复副本只占一个推荐位",
+              not (11 in ids and 18 in ids) and reco["meta"]["skipped"]["duplicate"] >= 1,
+              f"ids={ids} skipped={reco['meta']['skipped']}")
+        check("推荐位同分类受上限约束并保留其它分类",
+              ids.count(14) <= 1 and any(x in ids for x in (15,))
+              or sum(1 for i in ids if i in (11, 12, 13, 14)) <= MAX_PER_CATEGORY + 1,
+              str(ids))
+        check("推荐项每条都带「为什么推给你」",
+              bool(reco["items"]) and all(x.get("why") for x in reco["items"]),
+              str([x.get("why") for x in reco["items"]]) [:200])
+        check("召回的跳过项按原因分桶统计",
+              set(reco["meta"]["skipped"]) == {"no_analysis", "not_actionable",
+                                               "expired", "vetoed", "duplicate"}
+              and reco["meta"]["skipped"]["expired"] >= 1,
+              str(reco["meta"]["skipped"]))
+        # MMR 重排会为了覆盖面故意把同分类的次优项往后挪，
+        # 所以只能要求"首位是拟合度最高的一条"，不能要求整体严格降序。
+        check("重排后首位仍是拟合度最高的一条",
+              abs(reco["items"][0]["fit"] - max(x["fit"] for x in reco["items"])) < 1e-9,
+              str([x["fit"] for x in reco["items"]]))
+        check("多样性系数在 0~1 之间",
+              0 < DIVERSITY_LAMBDA < 1, str(DIVERSITY_LAMBDA))
+        check("模型说明返回七因子与三段式流程",
+              len(explain()) == 7
+              and abs(sum(f["weight"] for f in explain()) - 1.0) < 1e-9,
+              str([(f["key"], f["weight"]) for f in explain()]))
+
         p = {
             "title": "关于2027届校园招聘宣讲会的通知",
             "content": "招聘对象：2027届毕业生，专业包括计算机、电子信息等相关专业。\n"
@@ -979,6 +1085,32 @@ def main() -> int:
               r_struct.text[:160])
 
         # ============================================================
+        # 只是问「有哪些」、没说「可以报名」时，仍应把还能报的排前面：
+        # 否则首屏第一条永远是那条早就截止的历史通知。
+        d_list_open = qa_mod3.answer("适合我的竞赛有哪些？", qa_corpus)
+        first_cite = (d_list_open.get("citations") or [{}])[0]
+        first_deadline = str(first_cite.get("deadline") or "")
+        check("清单类问题优先列出仍可报名的通知",
+              first_deadline >= _dt.date.today().isoformat(),
+              f"first={first_deadline} "
+              f"cites={[c.get('title', '')[:12] for c in d_list_open.get('citations', [])]}")
+
+        # 一条都没法报名时，不能沿用「尚未截止」的模板口径。
+        past_corpus = [_qa_item(51, "关于举办过期竞赛的通知", "学科竞赛", D_PAST,
+                                "报名截止%s，请按时提交报名表。" % _cn(D_PAST),
+                                materials=["报名表"])]
+        d_past_only = qa_mod3.answer("有哪些学科竞赛可以报名？", past_corpus)
+        check("全部过期时不谎称可以报名",
+              "都已过报名截止" in d_past_only["answer"]
+              and "尚未截止" not in d_past_only["answer"],
+              d_past_only["answer"][:140])
+
+        from app.services import conditions as cond_mod           # noqa: E402
+        score_vals = [v for _, v in cond_mod.canonicalize(
+            "学位课平均成绩不低于80分", strict=False)]
+        check("分数门槛带上科目限定词便于核对",
+              score_vals == ["学位课平均成绩80分"], str(score_vals))
+
         print("\n[14] 多端资源与 AI 可靠性")
         r = c.get("/manifest.webmanifest")
         manifest = r.json() if r.status_code == 200 else {}

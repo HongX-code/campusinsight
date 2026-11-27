@@ -16,7 +16,7 @@
 
 核对口径：以 `python tests/test_smoke.py`、`scripts/evaluate.py`、`scripts/real_audit.py`、
 `scripts/benchmark.py`、`scripts/capture.py` 的实际输出为准；界面项以 `docs/shot-*.png` 为准。
-当前规模：**49 个路由端点**（含页面 `/` 与健康检查，其中 JSON API 28 个）、约 **21000 行源码**（Python 16400 + 前端 4629，不含文档）、**259 项端到端自检全通过**、**24 张界面截图**、Markdown 文档 **22 份**（`docs/` 下 21 份 + 根目录 README；新增 `docs/codearts_prompts_advanced.md`）。另有 `codearts/` 下的 1 份资产说明、11 份独立提示词、5 份留痕模板、1 份填写示范与 1 个单页实操作战台，属**方案资产**，不计入交付文档数。
+当前规模：**51 个路由端点**（含页面 `/` 与健康检查，其中 JSON API 28 个）、约 **21900 行源码**（Python 17100 + 前端 4798，不含文档）、**277 项端到端自检全通过**、**24 张界面截图**、Markdown 文档 **22 份**（`docs/` 下 21 份 + 根目录 README；新增 `docs/codearts_prompts_advanced.md`）。另有 `codearts/` 下的 1 份资产说明、11 份独立提示词、5 份留痕模板、1 份填写示范与 1 个单页实操作战台，属**方案资产**，不计入交付文档数。
 
 ---
 
@@ -70,7 +70,7 @@
 | 二十九 评分权重 | 40/20/20/10/10 仅作设计参数，不宣称为客观最优 | `matcher.py` 采用加分制而非伪精确百分比 | `docs/architecture.md` | ✅ 见备注 |
 | 三十 问答 | 先查库拿事实，再让模型组织语言 | `services/qa.py` | `shot-qa.png` | ✅ |
 | 三十一/三十九 RAG | 第一版不强制向量库 | — | — | 📌 文档明确列为 V2 |
-| 三十四 API | 前后端分离，接口可复用 | 49 个路由端点，OpenAPI 自动生成 | `/docs` | ✅ |
+| 三十四 API | 前后端分离，接口可复用 | 51 个路由端点，OpenAPI 自动生成 | `/docs` | ✅ |
 | 四十二 日志 | 爬虫 / API / AI / 异常 / 任务日志 | `logging` 分模块 logger | `app/main.py` 中间件 | ⚠️ 应用日志已覆盖，未落库成 `crawl_logs`/`ai_logs` 表 |
 | 四十三 异常 | 单页失败不拖垮整批 | `crawl_all` 单源 try/except、`analyze` 模型兜底 | 自检 [9] | ✅ |
 | 四十四/四十五 | JSON 容错 + Pydantic 校验 | `llm_client.chat_json` + `serializers.py` | 自检 [4] | ✅ |
@@ -102,7 +102,7 @@
 | 三十二 硬条件 | 专业/年级/学历/学院走规则，冲突直接不匹配 | `matcher._check_grade_hard` / `_check_major_hard` | 自检 [13] | ✅（本轮补齐） |
 | 三十四 匹配评分 | 权重是设计参数，需说明非客观最优 | `matcher.py` 加分制 | `docs/architecture.md` | ✅ |
 | 三十六 问答 | 检索 + 事实 + 生成，不让模型自由回答 | `qa.py` | `shot-qa.png` | ✅ |
-| 四十二 API | 用户/通知/匹配/问答/待办接口 | 49 个路由端点 | `docs/api.md` | ✅ |
+| 四十二 API | 用户/通知/匹配/问答/待办接口 | 51 个路由端点 | `docs/api.md` | ✅ |
 | 四十九—五十二 华为云 | CodeArts / RDS / DCS(Redis) / AI 模型服务 / 环境变量 | `config.py`、`llm_client.py`、`cache.py`、`connection.py`、`deploy/cloud/terraform/`、`scripts/cloud_bootstrap.py` | `docs/cloud_services.md`、`deploy/README.md` | ⏳ 代码与脚本就绪，真实开通/连通待验证 |
 | 五十三 日志 | 爬虫 / API / AI / 异常 / 任务 | 分模块 logger | — | ⚠️ 未落库 |
 | 五十六 数据生命周期 | 原始数据与 AI 数据分离 | `notices` / `notice_analysis` 两表 | `docs/database.md` | ✅ |

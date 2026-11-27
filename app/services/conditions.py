@@ -73,10 +73,18 @@ CANON_RULES: list[tuple[str, re.Pattern, object]] = [
     ("score", re.compile(r"前\s*(\d{1,3})\s*[%％]"),
      lambda m: f"专业前{m.group(1)}%"),
     # 分数门槛：不低于80分 / 80分以上
-    ("score", re.compile(r"(?:不低于|不少于|达到|在)\s*(\d{2,3})\s*分"),
-     lambda m: f"{m.group(1)}分"),
-    ("score", re.compile(r"(\d{2,3})\s*分\s*(?:以上|及以上)"),
-     lambda m: f"{m.group(1)}分"),
+    # 裸数字（"80分"）单独出现时读者无法判断是哪个门槛，所以尽量把前置的
+    # 科目/成绩限定词一起带出来：「学位课平均成绩不低于80分」→「学位课平均成绩80分」。
+    ("score", re.compile(
+        r"((?:学位课|必修课|选修课|专业课|平均成绩|单科成绩|总成绩|英语|四级|六级|"
+        r"政治|数学)[^，。；、\s]{0,6}?)?\s*"
+        r"(?:不低于|不少于|达到|在)\s*(\d{2,3})\s*分"),
+     lambda m: f"{(m.group(1) or '').strip()}{m.group(2)}分"),
+    ("score", re.compile(
+        r"((?:学位课|必修课|选修课|专业课|平均成绩|单科成绩|总成绩|英语|四级|六级|"
+        r"政治|数学)[^，。；、\s]{0,6}?)?\s*"
+        r"(\d{2,3})\s*分\s*(?:以上|及以上)"),
+     lambda m: f"{(m.group(1) or '').strip()}{m.group(2)}分以上"),
     # 年级要求：二年级及以上 / 二年级以上
     ("grade", re.compile(r"([一二三四])\s*年级\s*(及)?\s*以上"),
      lambda m: f"{m.group(1)}年级及以上" if m.group(2) else f"{m.group(1)}年级以上"),

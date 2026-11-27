@@ -11,6 +11,7 @@ from app.database.connection import get_db
 from app.database.models import Notice, NoticeAnalysis, User, UserTask
 from app.serializers import TaskIn, TaskUpdate, UserIn, analysis_to_dict, task_to_dict
 from app.services.matcher import match_one
+from app.services.recommender import recommend
 from app.services.textutil import safe_iso_date
 
 router = APIRouter(prefix="/api", tags=["用户"])
@@ -106,7 +107,16 @@ def get_matches(
         # 新闻资讯没有可办理事项，不该给出「未识别到截止日期，请核对原文」这类误导性建议
         if not analysis.get("actionable", True):
             continue
-        item = match_one(user, {"id": n.id, "category": n.category}, analysis)
+        item = match_one(
+            user,
+            {
+                "id": n.id,
+                "category": n.category,
+                "publish_time": n.publish_time,
+                "created_at": n.created_at,
+            },
+            analysis,
+        )
         if only_open and analysis.get("deadline"):
             d = safe_iso_date(analysis["deadline"])
             if d is not None and d < dt.date.today():
@@ -122,11 +132,77 @@ def get_matches(
         }
         results.append(item)
 
-    results.sort(key=lambda x: (-x["score"], x["notice_id"]))
+    # 先按得分降序；得分相同时把临期的排在前面，再按编号稳定排序，
+    # 保证同一用户多次请求看到相同顺序（前端不会"刷新一下就换一批"）。
+    results.sort(key=lambda x: (-x["score"], -x.get("fit", 0), x["notice_id"]))
     counts = {"match": 0, "maybe": 0, "no": 0}
     for r in results:
         counts[r["level"]] += 1
     return {"user": user, "counts": counts, "items": results}
+
+
+@router.get("/users/{user_id}/recommendations")
+def get_recommendations(
+    user_id: int,
+    limit: int = Query(6, ge=1, le=20, description="返回条数"),
+    include_expired: bool = Query(False, description="是否包含已截止（默认不推已截止）"),
+    db: Session = Depends(get_db),
+):
+    """精准推荐位：召回 → 排序 → 重排，返回「为什么推给你」与分项依据。"""
+    user = _user_dict(_get_user(db, user_id))
+    notices = db.scalars(
+        select(Notice).options(selectinload(Notice.analysis)).order_by(Notice.created_at.desc())
+    ).all()
+
+    rows = []
+    for n in notices:
+        analysis = analysis_to_dict(n.analysis)
+        if analysis is None:
+            continue
+        rows.append({
+            "id": n.id,
+            "title": n.title,
+            "category": n.category,
+            "source_url": n.source_url,
+            "publish_time": n.publish_time,
+            "created_at": n.created_at,
+            "analysis": analysis,
+        })
+
+    result = recommend(user, rows, limit=limit, include_expired=include_expired)
+    # 补上展示所需的通知摘要字段；推荐位只给前 100 字，点开再看全文
+    by_id = {r["id"]: r for r in rows}
+    for item in result["items"]:
+        row = by_id.get(item["notice_id"]) or {}
+        item["notice"] = {
+            "id": row.get("id"),
+            "title": row.get("title"),
+            "category": row.get("category"),
+            "source_url": row.get("source_url"),
+            "summary": (row.get("title") or "")[:100],
+        }
+        analysis = row.get("analysis") or {}
+        item["deadline"] = analysis.get("deadline")
+    result["user"] = user
+    return result
+
+
+@router.get("/recommendation-model")
+def recommendation_model():
+    """推荐模型说明：权重、因子含义与冷启动策略，界面可据此展示「算法怎么看」。"""
+    from app.services.matcher import MATCH_THRESHOLD
+    from app.services.recommender import DIVERSITY_LAMBDA, MAX_PER_CATEGORY, explain
+
+    return {
+        "factors": explain(),
+        "threshold": MATCH_THRESHOLD,
+        "max_per_category": MAX_PER_CATEGORY,
+        "diversity_lambda": DIVERSITY_LAMBDA,
+        "pipeline": ["召回：过滤新闻稿/不可办理/已截止/硬冲突",
+                     "排序：七因子加权求 fit，归一化到 5~98 分",
+                     "重排：同分类最多连续两席，保证首屏覆盖面"],
+        "cold_start": "未填写兴趣时兴趣因子取中性 0.5，由适用对象、专业限制与时效主导排序",
+    }
 
 
 @router.get("/users/{user_id}/tasks")

@@ -368,6 +368,21 @@
             <span class="hint" id="matchSummary"></span>
           </div>
           <div class="profile-card" id="profileCard"></div>
+
+          <!-- 精准推荐位：召回→排序→重排三段式，每条都给「为什么推给你」 -->
+          <div class="reco-panel" id="recoPanel" hidden>
+            <div class="reco-head">
+              <div class="reco-title">
+                <svg><use href="#i-spark"/></svg>
+                <span>为你推荐</span>
+                <span class="hint" id="recoMeta"></span>
+              </div>
+              <button class="btn ghost sm" id="recoExplainBtn" type="button">算法说明</button>
+            </div>
+            <div class="reco-grid" id="recoList"></div>
+            <div class="reco-explain" id="recoExplain" hidden></div>
+          </div>
+
           <div class="match-list" id="matchList"></div>
         </div>
       </section>
