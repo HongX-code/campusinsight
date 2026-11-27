@@ -27,6 +27,8 @@ VIEWS = {
     "match": "shot-match.png",
     "qa": "shot-qa.png",
     "tasks": "shot-tasks.png",
+    "mobile": "shot-mobile-platform.png",   # 多端接入
+    "conflicts": "shot-conflicts.png",      # 冲突治理
     "dashboard": "shot-dashboard.png",  # 信息治理 · 数据总览
     "sources": "shot-sources.png",
 }
@@ -86,11 +88,25 @@ def main() -> None:
                 if view not in VIEWS:
                     print(f"  跳过未知视图 {view}")
                     continue
+                if view == "tasks":
+                    # 「我的时间轴」要按身份筛选，未登录时只能看到登录提示。
+                    # 这里临时以演示账号（研二 → 硕士研究生）登录，拍完再退出，
+                    # 避免影响其他视图的默认未登录状态。
+                    page.evaluate("""async () => {
+                        const r = await fetch('/api/users');
+                        const us = await r.json();
+                        const u = us.find(x => /研/.test(x.grade || '')) || us[0];
+                        if (u) setLogin(u.id);
+                    }""")
+                    page.wait_for_timeout(1200)
                 page.evaluate("(v) => switchView(v)", view)
                 page.wait_for_timeout(1400)
                 out = DOCS / VIEWS[view]
                 page.screenshot(path=str(out), full_page=True)
                 print(f"  {view:10s} -> {out.name}")
+                if view == "tasks":
+                    page.evaluate("() => setLogin(0)")
+                    page.wait_for_timeout(400)
 
             # 专项图：首页 AI 洞察 Hero 与推荐机会（学生端主视觉）
             page.evaluate("(v) => switchView(v)", "home")
@@ -195,10 +211,41 @@ def main() -> None:
                     print("  evidence    -> shot-evidence.png")
             page.evaluate("closeDrawer()")
 
+            # 专项图：表格结构复原（采集期保住列边界后，学院/专业/电话从表格还原）
+            # 这张图要能看出「表头 + 列语义 + 派生出的学院与电话」，
+            # 所以截的是详情抽屉里标了「表格里的列边界」说明的那块面板。
+            tb_id = page.evaluate("""async () => {
+                const r = await fetch('/api/notices?size=100');
+                const d = await r.json();
+                const hit = d.items.find(x => x.analysis && x.analysis.table_stats
+                    && x.analysis.table_stats.total > 0);
+                return hit ? hit.id : null;
+            }""")
+            if tb_id:
+                page.evaluate("(i) => openNotice(i)", tb_id)
+                page.wait_for_timeout(1200)
+                card = page.locator(".tl-panel:has-text('表格里的列边界')")
+                if card.count():
+                    card.first.screenshot(path=str(DOCS / "shot-table.png"))
+                    # 再拍一张整抽屉：表格卡片 + 由它补全的字段并排出现，
+                    # 才能说明「表格里的 6 个学院确实进了 major_requirement」。
+                    page.set_viewport_size({"width": 1440, "height": 2400})
+                    page.wait_for_timeout(400)
+                    page.locator(".drawer").screenshot(path=str(DOCS / "shot-table-full.png"))
+                    page.set_viewport_size({"width": 1440, "height": 960})
+                    print(f"  table       -> shot-table.png / shot-table-full.png  (notice_id={tb_id})")
+                else:
+                    print("  详情里没有表格卡片，跳过 table 截图")
+                page.evaluate("closeDrawer()")
+            else:
+                print("  未找到含表格的通知，跳过 table 截图")
+
             # 专项图：录入弹窗
+            # 注意选择器要限定到 #modalMask：页面上还有一个登录弹窗（.modal.login-modal），
+            # 直接写 .modal 会命中两个元素，触发 Playwright 的 strict mode violation。
             page.evaluate("openModal()")
             page.wait_for_timeout(400)
-            page.locator(".modal").screenshot(path=str(DOCS / "shot-ingest.png"))
+            page.locator("#modalMask .modal").screenshot(path=str(DOCS / "shot-ingest.png"))
             page.evaluate("closeModal()")
             print("  ingest      -> shot-ingest.png")
 

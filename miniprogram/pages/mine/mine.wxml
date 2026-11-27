@@ -1,0 +1,151 @@
+<!-- 我的：画像 + 待办 + 设置 -->
+<view class="container">
+
+  <view wx:if="{{loading}}" class="loading">正在加载…</view>
+
+  <view wx:elif="{{error}}" class="empty">
+    {{error}}
+    <view class="btn btn-ghost retry-btn" bindtap="retry">重试</view>
+  </view>
+
+  <block wx:else>
+
+    <!-- ---------------------------------------------------- 身份卡 -->
+    <view class="profile-card">
+      <view class="avatar">{{initial}}</view>
+      <view class="grow">
+        <view class="profile-name">{{user.name || '未命名'}}</view>
+        <view class="profile-sub">
+          <text wx:if="{{user.major}}">{{user.major}}</text>
+          <text wx:if="{{user.major && user.grade}}"> · </text>
+          <text wx:if="{{user.grade}}">{{user.grade}}</text>
+          <text wx:if="{{!user.major && !user.grade}}" class="profile-empty">未填写专业年级</text>
+        </view>
+      </view>
+      <view wx:if="{{!editing}}" class="edit-btn" bindtap="startEdit">编辑</view>
+    </view>
+
+    <!-- ---------------------------------------------------- 编辑表单 -->
+    <view wx:if="{{editing}}" class="card">
+      <view class="block-title">完善个人信息</view>
+      <view class="form-hint">匹配结论依赖这些字段，填得越准推荐越靠谱</view>
+
+      <view class="field">
+        <view class="field-label">姓名</view>
+        <input class="field-input" value="{{form.name}}" data-key="name" bindinput="onFieldInput" placeholder="必填" />
+      </view>
+      <view class="field">
+        <view class="field-label">年级</view>
+        <input class="field-input" value="{{form.grade}}" data-key="grade" bindinput="onFieldInput" placeholder="如 2024级 / 研一" />
+      </view>
+      <view class="field">
+        <view class="field-label">专业</view>
+        <input class="field-input" value="{{form.major}}" data-key="major" bindinput="onFieldInput" placeholder="如 计算机科学与技术" />
+      </view>
+      <view class="field">
+        <view class="field-label">学号（选填）</view>
+        <input class="field-input" value="{{form.student_no}}" data-key="student_no" bindinput="onFieldInput" placeholder="仅本地存储" />
+      </view>
+      <view class="field">
+        <view class="field-label">兴趣方向（用顿号分隔）</view>
+        <input class="field-input" value="{{form.interests}}" data-key="interests" bindinput="onFieldInput" placeholder="如 竞赛、科研、志愿" />
+      </view>
+
+      <view class="form-actions">
+        <view class="btn btn-ghost form-btn" bindtap="cancelEdit">取消</view>
+        <view class="btn btn-primary form-btn" bindtap="saveProfile">保存</view>
+      </view>
+    </view>
+
+    <!-- ---------------------------------------------------- 待办统计 -->
+    <view class="todo-stat">
+      <view class="todo-cell">
+        <view class="todo-num">{{taskCounts.todo}}</view>
+        <view class="todo-label">未开始</view>
+      </view>
+      <view class="todo-cell">
+        <view class="todo-num todo-doing">{{taskCounts.doing}}</view>
+        <view class="todo-label">进行中</view>
+      </view>
+      <view class="todo-cell">
+        <view class="todo-num todo-done">{{taskCounts.done}}</view>
+        <view class="todo-label">已完成</view>
+      </view>
+    </view>
+
+    <!-- ---------------------------------------------------- 待办列表 -->
+    <view class="section-head">
+      <view class="section-title">我的待办</view>
+    </view>
+
+    <view wx:if="{{tasks.length === 0}}" class="empty-mini">
+      还没有待办。在通知详情页点「加入我的待办」就会出现在这里。
+      <view class="btn btn-ghost go-btn" bindtap="goNotices">去看看通知</view>
+    </view>
+
+    <block wx:for="{{tasks}}" wx:key="id">
+      <view class="card task-card {{item.status === 'done' ? 'task-done' : ''}}">
+        <view class="row-between">
+          <view class="grow" data-notice="{{item.noticeId}}" bindtap="openTask">
+            <view class="task-title {{item.status === 'done' ? 'task-title-done' : ''}}">{{item.title}}</view>
+            <view class="task-meta">
+              <text class="tag tag-{{item.status === 'done' ? 'gray' : (item.status === 'doing' ? 'accent' : '')}}">
+                {{item.statusText}}
+              </text>
+              <text wx:if="{{item.deadline}}" class="task-deadline">{{item.deadline}} 截止</text>
+            </view>
+          </view>
+
+          <view class="task-ops">
+            <view
+              class="op-btn"
+              data-id="{{item.id}}"
+              data-status="{{item.status}}"
+              catchtap="cycleTask"
+            >切换</view>
+            <view class="op-btn op-del" data-id="{{item.id}}" catchtap="removeTask">移除</view>
+          </view>
+        </view>
+      </view>
+    </block>
+
+    <!-- ---------------------------------------------------- 设置 -->
+    <view class="section-head">
+      <view class="section-title">提醒与订阅</view>
+    </view>
+
+    <view class="card setting-card">
+      <view class="row-between">
+        <view class="grow">
+          <view class="setting-name">微信订阅消息</view>
+          <view class="setting-desc">
+            {{pushReady ? '已配置模板，可在通知详情页开启' : '未配置模板 ID，暂以站内待办提醒'}}
+          </view>
+        </view>
+        <text class="tag {{pushReady ? 'tag-success' : 'tag-gray'}}">
+          {{pushReady ? '可用' : '未配置'}}
+        </text>
+      </view>
+      <view class="divider"></view>
+      <view class="row-between">
+        <view class="grow">
+          <view class="setting-name">日历订阅</view>
+          <view class="setting-desc">把截止日期同步进系统日历，不需要推送权限</view>
+        </view>
+        <view class="link-btn" bindtap="copyCalendar">复制链接</view>
+      </view>
+    </view>
+
+    <view class="card setting-card">
+      <view class="row-between" bindtap="showAbout">
+        <view class="setting-name">关于高校智讯</view>
+        <text class="chevron">›</text>
+      </view>
+    </view>
+
+    <view class="foot-note">
+      Web 端与小程序共用同一套后端与画像，换手机登录后数据仍在。
+    </view>
+
+  </block>
+</view>

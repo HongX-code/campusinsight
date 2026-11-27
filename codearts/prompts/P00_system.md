@@ -14,15 +14,15 @@
 【工程事实（截至 2026-11-07 的代码基线）】
 - 技术栈：Python 3.12 + FastAPI + SQLAlchemy（本地 SQLite，可切华为云 RDS for MySQL）；
   前端为原生 HTML/CSS/JavaScript，无构建工具、无前端框架；单进程单体架构。
-- 目录：app/routers（5 个路由模块，全站 34 个端点）、app/services（解析/采集/匹配/问答/校验）、
+- 目录：app/routers（5 个路由模块，全站 49 个端点）、app/services（解析/采集/匹配/问答/校验）、
   app/database（模型与连接）、app/static、app/templates、scripts（评测/实测/截图/回灌）、
   tests（test_smoke.py）、data（标注集与真实快照）、docs（16 份 Markdown）、config/sources.json。<!-- 说明性引用 -->
-- 规模：约 14000 行源码（Python 10300 + 前端 3728）；tests/test_smoke.py 当前 144 项断言全通过。
+- 规模：约 21000 行源码（Python 16400 + 前端 4629）；tests/test_smoke.py 当前 259 项断言全通过。
 - 语料：42 份武汉理工大学公开通知真实快照、7 个栏目；24 份开发集 + 8 份留出集逐字段标注；合计 74 份。
-- 可信 AI 口径固定为「四层保护 + 规则校验（C1—C9）」；结构化字段契约 14 类；
+- 可信 AI 口径固定为「四层保护 + 规则校验（C1—C11）」；结构化字段契约 14 类；
   人工审核三态（通过 / 修正字段 / 驳回重解析）；匹配结论只输出三档，分数是「规则加权匹配度（非录取概率）」。
 - 界面为 Arctic Glass Design System：浅灰白底 #F6F8FC、白色卡片；蓝色 #2563EB 仅用于核心操作，
-  紫色 #7C3AED 仅用于 AI 语义；7 个视图；20 张截图；规范全文见 docs/ui_design.md。
+  紫色 #7C3AED 仅用于 AI 语义；9 个视图；24 张截图；规范全文见 docs/ui_design.md。
 - 性能数字唯一数据源是 docs/benchmark.md，由 scripts/benchmark.py 现场计时生成；
   当前值：单条解析中位数 1.86 ms、P95 7.21 ms、100 条批量 0.202 s、495.5 条/秒。
   改动性能相关表述后必须运行 scripts/sync_metrics.py 回灌 README / 测试报告 / 视频脚本 / PPT / 表单。
@@ -39,7 +39,7 @@
    前端框架或任何 requirements.txt 之外的新依赖。架构保持单 FastAPI 进程。
 2. 不改写、不预设评测与性能实测数字；人工阅读耗时未组织真人计时实验，
    因此**不得填写人工耗时或「效率提升百分比」**，不得把本地 SQLite 实测说成云端 RDS 结果。
-3. 不把「四层保护 + 规则校验（C1—C9）」写成「五层保护」；不写「96% 匹配」这类伪精确概率；
+3. 不把「四层保护 + 规则校验（C1—C11）」写成「五层保护」；不写「96% 匹配」这类伪精确概率；
    不删除原文证据（evidence）接地与 checker 结果。
 4. 日期运算一律走 app/services/textutil.py 的 safe_iso_date / is_iso_date，
    禁止裸调 date.fromisoformat()；人工录入的 4 个日期字段（deadline、start_time、

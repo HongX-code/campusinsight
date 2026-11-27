@@ -1,0 +1,104 @@
+<!-- 首页：问候 + 四宫格统计 + 近期截止 + 推荐机会 -->
+<view class="container">
+
+  <!-- 顶部问候 -->
+  <view class="hero">
+    <view class="hero-greet">{{greeting}}{{user && user.name ? '，' + user.name : ''}}</view>
+    <view class="hero-sub">
+      <text wx:if="{{user && user.major}}">{{user.major}}</text>
+      <text wx:if="{{user && user.major && user.grade}}" class="hero-dot">·</text>
+      <text wx:if="{{user && user.grade}}">{{user.grade}}</text>
+      <text wx:if="{{!(user && user.major) && !(user && user.grade)}}" class="hero-hint">在「我的」里填一下专业年级，推荐会准很多</text>
+    </view>
+    <view wx:if="{{modeLabel}}" class="hero-mode">{{modeLabel}}</view>
+  </view>
+
+  <!-- 加载中 -->
+  <view wx:if="{{loading}}" class="loading">正在加载…</view>
+
+  <!-- 出错 -->
+  <view wx:elif="{{error}}" class="card">
+    <view class="card-title">加载失败</view>
+    <view class="card-meta">{{error}}</view>
+    <view class="btn btn-ghost retry-btn" bindtap="retry">重试</view>
+  </view>
+
+  <block wx:else>
+    <!-- 统计四宫格 -->
+    <view class="stat-grid">
+      <view class="stat-cell" bindtap="goNotices">
+        <view class="stat-num">{{stats.open_notices}}</view>
+        <view class="stat-label">办理中</view>
+      </view>
+      <view class="stat-cell" bindtap="goMine">
+        <view class="stat-num">{{stats.todo_tasks}}</view>
+        <view class="stat-label">我的待办</view>
+      </view>
+      <view class="stat-cell" bindtap="goMatch">
+        <view class="stat-num">{{stats.matched}}</view>
+        <view class="stat-label">可报名</view>
+      </view>
+      <view class="stat-cell" bindtap="goNotices">
+        <view class="stat-num {{stats.overdue_soon > 0 ? 'stat-num-warn' : ''}}">{{stats.overdue_soon}}</view>
+        <view class="stat-label">三日内</view>
+      </view>
+    </view>
+
+    <!-- 近期截止 -->
+    <view class="section-head">
+      <view class="section-title">近期截止</view>
+      <view class="section-more" bindtap="goNotices">全部</view>
+    </view>
+
+    <view wx:if="{{agenda.length === 0}}" class="empty-mini">暂时没有临近的截止日期</view>
+
+    <view
+      wx:for="{{agenda}}"
+      wx:key="notice_id"
+      class="card card-tap agenda-card"
+      data-id="{{item.notice_id}}"
+      bindtap="openNotice"
+    >
+      <view class="row-between">
+        <view class="grow card-title ellipsis-2">{{item.title}}</view>
+        <view class="due due-{{item.tone}}">{{item.days_text}}</view>
+      </view>
+      <view class="row card-meta">
+        <text class="tag">{{item.category}}</text>
+        <text class="agenda-date">{{item.deadline}}</text>
+        <text wx:if="{{item.deadline_kind}}" class="agenda-kind">{{item.deadline_kind}}</text>
+      </view>
+    </view>
+
+    <!-- 推荐机会 -->
+    <view class="section-head">
+      <view class="section-title">为你推荐</view>
+      <view class="section-more" bindtap="goMatch">全部</view>
+    </view>
+
+    <view wx:if="{{matched.length === 0}}" class="empty-mini">
+      还没有匹配到合适的机会{{user && user.major ? '' : '，先补全专业年级再试'}}
+    </view>
+
+    <view
+      wx:for="{{matched}}"
+      wx:key="noticeId"
+      class="card card-tap"
+      data-id="{{item.noticeId}}"
+      bindtap="openNotice"
+    >
+      <view class="card-title ellipsis-2">{{item.title}}</view>
+      <view class="row match-row">
+        <text class="tag tag-accent">{{item.score}}分匹配</text>
+        <text class="tag tag-gray">{{item.category}}</text>
+        <text wx:if="{{item.deadline}}" class="agenda-date">{{item.deadline}}</text>
+      </view>
+      <view wx:if="{{item.reason}}" class="match-reason">{{item.reason}}</view>
+    </view>
+
+    <!-- 推送状态提示 -->
+    <view wx:if="{{!pushReady}}" class="notice-strip">
+      订阅消息模板未配置，截止提醒暂以站内待办呈现；配置模板 ID 后自动开启微信推送。
+    </view>
+  </block>
+</view>

@@ -25,6 +25,10 @@ const state = {
   lastQuestion: "",
   qaTab: "chat",
   pwa: {},
+  /* 多端接入与冲突治理的视图状态 */
+  mobileStatus: null,
+  conflictSeverity: "",
+  conflictShowResolved: false,
 };
 
 /* ---------------- 角色账号登录态 ----------------
@@ -160,6 +164,20 @@ function daysLeft(deadline) {
   return Math.round((d - today) / 86400000);
 }
 
+/* 画像里的年级写法五花八门（博二 / 研三 / 大三 / 2024级硕士），而时间轴节点上
+   的身份词只有四个（博士研究生 / 硕士研究生 / 本科生 / 专科生）。这里做同一套
+   归一，保证「本人需要办」的判定不会因为写法不同而全部落空。 */
+function roleFromGrade(grade) {
+  const g = String(grade || "");
+  if (!g) return "";
+  if (g.includes("博士") || g.includes("博一") || g.includes("博二")
+      || g.includes("博三") || g.includes("博四") || g.includes("博五")) return "博士研究生";
+  if (g.includes("硕士") || /研[一二三]/.test(g) || g.includes("研究生")) return "硕士研究生";
+  if (g.includes("专科") || g.includes("高职")) return "专科生";
+  if (g.includes("本科") || /大[一二三四五]/.test(g)) return "本科生";
+  return "";
+}
+
 /* 截止时间视觉系统：正常绿 / 临近橙 / 紧急红 / 已截止灰 */
 function deadlineInfo(deadline) {
   if (!deadline) return { cls: "dl-none", text: "未识别截止", date: "" };
@@ -200,8 +218,10 @@ const VIEW_META = {
   sources: ["采集中心", "按栏目批量抓取公开通知，预览确认后再入库"],
   match: ["我的匹配", "结合你的专业、年级与兴趣，给出三档结论与逐条理由"],
   qa: ["AI 助手", "只基于已收录通知作答，每个结论都能回溯原文"],
-  tasks: ["我的任务", "把关键通知加入时间管理，避免错过截止日期"],
+  tasks: ["我的任务", "把关键通知加入时间管理，按本人身份看自己的截止时间轴"],
   dashboard: ["数据总览", "已收录通知的结构化解析与处理质量总览"],
+  mobile: ["多端接入", "Web、PWA、微信小程序、系统日历四个入口共享同一套后端与画像"],
+  conflicts: ["冲突治理", "横向比对同源通知，找出单条解析看不见的矛盾字段"],
 };
 
 function switchView(name, push = true) {
@@ -231,6 +251,8 @@ function switchView(name, push = true) {
   if (name === "sources") renderSources();
   if (name === "match") renderMatch();
   if (name === "tasks") renderTasks();
+  if (name === "mobile") renderMobile();
+  if (name === "conflicts") renderConflicts();
   if (name === "qa" && state.qaTab === "chat" && window.innerWidth >= 768) {
     setTimeout(() => $("#qaInput").focus(), 60);
   }
@@ -596,11 +618,21 @@ function closeDrawer() {
 }
 
 /* 点击「原文依据」→ 在正文中定位并高亮，形成「AI 结论 → 字段 → 原文」闭环 */
+/* 正文渲染专用：把采集期用来保留列边界的 \x1f 显示成一个可见竖线。
+   这个字符是控制符（Unit Separator），浏览器不会为它排版，
+   直接塞进 innerHTML 会让「学院名称\x1f专业代码」在界面上粘成一串，
+   看起来像解析出错了——其实是我们的分隔符露出来了。 */
+function pretty(text) {
+  return esc(String(text == null ? "" : text)).replace(/\u001f/g, '<span class="cell-sep">|</span>');
+}
+
 function jumpToEvidence(fragment) {
   const box = $(".content-box");
   if (!box || !fragment) return;
   const full = box.textContent || "";
-  const anchor = String(fragment).replace(/\s/g, "").slice(0, 12);
+  // 正文里的列分隔符已经渲染成竖线，而证据片段里还是原始的 \x1f，
+  // 两边都归一化成竖线才能对上，否则表格字段永远定位不到。
+  const anchor = String(fragment).replace(/\u001f/g, "|").replace(/\s/g, "").slice(0, 12);
   if (!anchor) return;
   const flat = [];
   for (let i = 0; i < full.length; i++) {
@@ -647,7 +679,7 @@ function renderDrawer(n) {
 
   /* 证据片段放进 data-*，用事件委托定位，避免内联字符串转义问题 */
   const evi = (key) => (a && a.evidence && a.evidence[key])
-    ? `<div class="evi" data-evi="${esc(a.evidence[key])}" title="点击在原文中定位">${esc(a.evidence[key])}</div>`
+    ? `<div class="evi" data-evi="${esc(a.evidence[key])}" title="点击在原文中定位">${pretty(a.evidence[key])}</div>`
     : "";
 
   const contactText = (c) => {
@@ -656,9 +688,118 @@ function renderDrawer(n) {
     return parts.length ? esc(parts.join(" · ")) : "";
   };
 
+  /* 多轨道截止时间轴：一条通知里可能并行推进秋/冬两套时间表，或者博士生与
+     硕士生各有各的节点。单值「报名截止」只能显示其中一个日期，所以这里按
+     轨道分组把全部节点摊开，并在每组标出「本人需要办」的节点。 */
+  const timelineHTML = (() => {
+    const nodes = (a && a.timeline) || [];
+    if (!nodes.length) return "";
+    const tracks = (a.timeline_tracks && a.timeline_tracks.length)
+      ? a.timeline_tracks
+      : [""];
+    const myRole = (state.currentUser && roleFromGrade(state.currentUser.grade)) || "";
+
+    const groups = tracks.map((t) => ({
+      track: t,
+      list: nodes.filter((n) => (n.track || "") === t),
+    })).filter((g) => g.list.length);
+
+    const trackTag = (t) => (t ? `<span class="tag ai">${esc(t)}轨道</span>` : "");
+    const roleTag = (n) => (n.scope === "admin"
+      ? '<span class="tag kind">学院办理</span>'
+      : `<span class="tag kind">${esc(n.role || "学生")}</span>`);
+
+    return `
+      <div class="sec-title">截止时间轴 <span class="line"></span></div>
+      <div class="tl-panel">
+        <div class="tl-head">
+          <span class="tag ai">${icon("calendar")} 共 ${nodes.length} 个节点 · ${groups.length} 条轨道</span>
+          <span class="hint">同一事项在秋季与冬季各有一组日期，按自己所在批次看对应的那一行。</span>
+        </div>
+        ${groups.map((g) => `
+          <div class="tl-track">
+            <div class="tl-track-head">${trackTag(g.track)}
+              <span class="hint">${g.list.length} 个节点</span></div>
+            <ol class="tl-list">
+              ${g.list.map((n) => {
+                const dl = daysLeft(n.date);
+                const mine = n.scope !== "admin" && myRole
+                  && (String(n.role).includes(myRole) || myRole.includes(String(n.role)));
+                return `<li class="tl-node ${n.scope === "admin" ? "is-admin" : ""} ${mine ? "is-mine" : ""}">
+                  <span class="tl-date">${esc(n.date || "")}</span>
+                  <span class="tl-act">${esc(n.action || "")}</span>
+                  ${roleTag(n)}
+                  ${dl >= 0 ? `<span class="tl-left">剩 ${dl} 天</span>` : '<span class="tl-left is-due">已过期</span>'}
+                </li>`;
+              }).join("")}
+            </ol>
+          </div>`).join("")}
+        <div class="hint" style="margin-top:8px">
+          每个节点都逐条回原文核对过日期与事项；对不上原文的节点会被剔除，不会出现在这里。
+        </div>
+      </div>`;
+  })();
+
   /* 规则校验报告 + 人工审核操作区 */
   const ck = (a && a.checks) || {};
   const passN = (ck.passed || []).length;
+  /* 表格派生说明：这条通知里的学院/专业/电话是从表格的哪几列读出来的。
+     不给这层说明，用户在详情里看到一个凭空多出来的学院名，只能选择信或不信。
+     注意这里只讲结构不讲整表原文——原文就在上面，再贴一遍既冗余又容易不同步。 */
+  const tableHTML = (() => {
+    const st = (a && a.table_stats) || {};
+    const detail = (a && a.table_detail) || [];
+    // 存量正文：旧版采集器把表格压平入库，列边界已丢且不可复原。
+    // 这时必须显式说"要重新采集"，不能让它表现为"这条通知本来就没有表格"——
+    // 沉默会让用户以为信息本来就不存在，而实际上是我们早期把结构扔掉了。
+    if (a && a.table_needs_recollect && !detail.length) {
+      return `
+      <div class="sec-title">表格结构 <span class="line"></span></div>
+      <div class="tl-panel">
+        <div class="tl-head">
+          <span class="tag">需重新采集</span>
+          <span class="hint">这条通知的正文是旧版采集器入库的，表格的列边界已经丢失</span>
+        </div>
+        <div class="hint" style="margin-top:8px">
+          压平之后的正文里没有"列"这个概念（085600材料与化工1027-87164677 既可切三段也可切两段），
+          复原只能靠猜，猜错会造出原文没有的事实，所以不做复原。
+          在"来源管理"里重新采集这条通知，表格结构就能完整还原。
+        </div>
+      </div>`;
+    }
+    if (!st.total || !detail.length) return "";
+    const kindName = { major_plan: "招生计划表", schedule: "日程安排表", contact: "联系表", list: "清单表" };
+    const colName = {
+      college: "学院", major_code: "专业代码", major_name: "专业名称", plan: "计划",
+      phone: "电话", email: "邮箱", person: "联系人", date: "日期", seq: "序号",
+      detail: "事项", link: "链接", "": "未标注",
+    };
+    const rows = detail.map((t) => {
+      const cols = (t.kinds || []).map((k) => esc(colName[k] || k)).join(" · ");
+      return `<li><b>${esc(kindName[t.kind] || "表格")}</b>　${t.columns} 列 × ${t.rows} 行
+        <span class="hint">（${cols}）</span></li>`;
+    }).join("");
+    const derived = [];
+    if (st.colleges) derived.push(`${st.colleges} 个学院`);
+    if (st.majors) derived.push(`${st.majors} 个专业`);
+    if (st.phones) derived.push(`${st.phones} 个电话`);
+    return `
+      <div class="sec-title">表格结构 <span class="line"></span></div>
+      <div class="tl-panel">
+        <div class="tl-head">
+          <span class="tag">${st.total} 张表</span>
+          <span class="tag">${st.rows} 行数据</span>
+          <span class="hint">${derived.length ? "据此补全：" + esc(derived.join("、")) : ""}</span>
+        </div>
+        <ul class="tl-list" style="padding-left:16px;margin:8px 0 0">${rows}</ul>
+        <div class="hint" style="margin-top:8px">
+          表格里的列边界在采集时就被保留下来了；学院与电话只在正文没写时才由表格补位，
+          正文明确写出的值优先。列数对不上的行不采信——值串列记错学院比空着更糟。
+        </div>
+        ${a.table_note ? `<div class="evi static" style="margin-top:8px">${esc(a.table_note)}</div>` : ""}
+      </div>`;
+  })();
+
   const issueN = (ck.issues || []).length;
   const warnN = (ck.warnings || []).length;
   const checksHTML = (a && (ck.passed || ck.issues)) ? `
@@ -722,6 +863,8 @@ function renderDrawer(n) {
         ${fieldBlock("报名方式", a.apply_method ? esc(a.apply_method) : "", "", true)}
       </div>
       ${a.review_note && !isNews ? `<div class="evi static" style="margin-top:12px">${esc(a.review_note)}</div>` : ""}
+      ${timelineHTML}
+      ${tableHTML}
       ${checksHTML}`;
   } else {
     analysisHTML = `<div class="sec-title">AI 解析结果 <span class="line"></span></div><div class="empty">该通知尚未解析</div>`;
@@ -740,7 +883,7 @@ function renderDrawer(n) {
 
     <div class="sec-title">通知原文 <span class="line"></span></div>
     <div class="hint" style="margin-bottom:8px">点击上方任意「原文依据」可在此处定位并高亮对应句子。</div>
-    <div class="content-box">${esc(n.content)}</div>`;
+    <div class="content-box">${pretty(n.content)}</div>`;
 }
 
 async function analyzeNotice(id) {
@@ -1194,7 +1337,73 @@ function askQuestionRetry() {
 }
 
 /* ---------------- 我的任务 ---------------- */
+/* 个人时间轴：直接打 /api/timeline，服务端已按用户画像里的年级归一身份，
+   这里只负责渲染。回看窗口给 400 天，是因为校内通知的节点日期可能已经过去，
+   学生仍需要看到「我错过了哪几步」，而不是一片空白。 */
+async function renderMyTimeline() {
+  const box = $("#myTimeline");
+  if (!box) return;
+  const u = state.currentUser || state.users[0];
+  if (!u) {
+    box.innerHTML = '<div class="empty">请先点击右上角头像登录角色账号</div>';
+    return;
+  }
+  const grade = (state.currentUser && state.currentUser.grade) || "";
+  if (!grade) {
+    box.innerHTML = `<div class="empty">
+      个人时间轴需要知道你的年级。<br/>
+      <span class="hint">在「我的匹配」里填写年级（如 博二 / 研三 / 大三）后，这里会自动列出你要办的节点。</span>
+    </div>`;
+    return;
+  }
+  box.innerHTML = '<div class="empty">加载中…</div>';
+  try {
+    /* Web 端没有小程序那套票据，登录只是本地选了一个角色，
+       所以按 user_id 取数；小程序端仍走 x-token。 */
+    const d = await api(`/api/timeline?user_id=${u.id}&back=400`);
+    const hint = $("#myTimelineHint");
+    if (hint) {
+      hint.textContent = d.role
+        ? `身份归一为「${d.role}」，共 ${d.count} 个节点`
+        : "年级未识别为具体身份，请在「我的匹配」中改成 博二 / 研三 / 大三 这类写法";
+    }
+    if (!d.items || !d.items.length) {
+      box.innerHTML = '<div class="empty">当前没有与你身份相关的截止节点</div>';
+      return;
+    }
+    // 按轨道分组，与通知详情里的时间轴保持同一套视觉语言
+    const tracks = [];
+    d.items.forEach((it) => { if (!tracks.includes(it.track)) tracks.push(it.track); });
+    box.innerHTML = tracks.map((t) => {
+      const list = d.items.filter((it) => it.track === t);
+      return `<div class="tl-track">
+        <div class="tl-track-head">
+          ${t ? `<span class="tag ai">${esc(t)}轨道</span>` : '<span class="tag kind">未标注轨道</span>'}
+          <span class="hint">${list.length} 个节点</span>
+        </div>
+        <ol class="tl-list">
+          ${list.map((it) => `
+            <li class="tl-node is-mine">
+              <span class="tl-date">${esc(it.date)}</span>
+              <span class="tl-act">${esc(it.action)}
+                <button class="tl-open" data-open="${it.notice_id}">${esc(it.notice_title)}</button>
+              </span>
+              <span class="tag kind">${esc(it.role || "")}</span>
+              ${it.days_left >= 0
+                ? `<span class="tl-left">剩 ${it.days_left} 天</span>`
+                : '<span class="tl-left is-due">已过期</span>'}
+            </li>`).join("")}
+        </ol>
+      </div>`;
+    }).join("");
+  } catch (e) {
+    box.innerHTML = `<div class="empty">加载失败：${esc(e.message)}</div>`;
+  }
+}
+
 async function renderTasks() {
+  /* 时间轴独立取数：即使待办接口失败，时间轴仍要能显示出来 */
+  renderMyTimeline();
   const u = state.currentUser || state.users[0];
   if (!u) { $("#taskList").innerHTML = '<div class="card empty">暂无用户</div>'; return; }
   try {
@@ -1653,6 +1862,219 @@ function applyGlobalSearch(value) {
   else renderNotices();
 }
 
+/* ---------------- 多端接入 ---------------- */
+const PLATFORM_META = {
+  web: { name: "Web 单页", desc: "原生 HTML/CSS/JS，无构建依赖", icon: "i-home" },
+  pwa: { name: "PWA", desc: "可安装到桌面，离线可读已解析内容", icon: "i-cloud" },
+  miniprogram: { name: "微信小程序", desc: "原生工程，tabBar 四页 + 详情页", icon: "i-mobile" },
+  calendar: { name: "日历订阅", desc: "ICS 推送截止日期，不依赖推送权限", icon: "i-calendar" },
+};
+
+async function renderMobile() {
+  $("#mobileKpi").innerHTML = '<div class="kpi skeleton"></div>'.repeat(4);
+  $("#platformList").innerHTML = '<div class="empty">加载中…</div>';
+  $("#pushBody").innerHTML = '<div class="empty">加载中…</div>';
+
+  try {
+    const s = await api("/api/wechat/status");
+    state.mobileStatus = s;
+
+    const platforms = s.platforms || {};
+    const keys = Object.keys(platforms);
+    const online = keys.filter((k) => platforms[k].available).length;
+
+    $("#mobileKpi").innerHTML = [
+      kpi("接入端", online, `共 ${keys.length} 个入口共享同一后端`, "accent"),
+      kpi("登录模式", s.enabled ? "微信" : "游客", s.login || "", ""),
+      kpi("订阅消息", s.push_ready ? "可用" : "未配置",
+        s.template_configured ? "模板已配置" : "缺少模板 ID，降级为站内提醒",
+        s.push_ready ? "" : "warn"),
+      kpi("票据有效期", s.token_ttl_days + " 天",
+        "过期由前端静默重登，用户无感", ""),
+    ].join("");
+
+    $("#mobileModeHint").textContent = s.mode || "";
+
+    $("#platformList").innerHTML = keys.map((k) => {
+      const p = platforms[k] || {};
+      const meta = PLATFORM_META[k] || { name: k, desc: "", icon: "i-file" };
+      const entry = p.entry || p.manifest || p.subscription || "";
+      return `<div class="platform-row">
+        <span class="pf-ico"><svg><use href="#${meta.icon}"/></svg></span>
+        <div class="pf-main">
+          <div class="pf-name">${esc(meta.name)}
+            <span class="tag ${p.available ? "tag-success" : "tag-gray"}">${p.available ? "可用" : "关闭"}</span>
+          </div>
+          <div class="pf-desc">${esc(meta.desc)}</div>
+          ${entry ? `<div class="pf-entry">${esc(entry)}</div>` : ""}
+        </div>
+      </div>`;
+    }).join("") || '<div class="empty">没有可用入口</div>';
+
+    $("#mpConfig").innerHTML = [
+      ["AppID / Secret", s.enabled ? "已配置" : "未配置（游客演示模式）"],
+      ["订阅消息模板", s.template_configured ? "已配置" : "未配置"],
+      ["登录方式", s.login || "-"],
+      ["基础地址", location.origin],
+    ].map(([k, v]) => `<div class="cfg-row"><span>${esc(k)}</span><b>${esc(v)}</b></div>`).join("");
+
+    $("#pushState").textContent = s.push_ready ? "可用" : "未配置";
+    $("#pushBody").innerHTML = s.push_ready
+      ? `<p class="hint">用户在小程序详情页点「开启微信截止提醒」后，后端按「模板 + 通知」累计下发额度。
+           微信一次性订阅的语义是「授权一次只能下发一条」，所以这里用计数而非布尔开关。</p>
+         <div class="cfg-row"><span>下发时机</span><b>截止前 3 天 / 当天</b></div>
+         <div class="cfg-row"><span>降级策略</span><b>无额度时转站内待办</b></div>`
+      : `<p class="hint">未配置 <code>WECHAT_TEMPLATE_DEADLINE</code>，推送通道关闭。
+           此时截止提醒走两条不依赖权限的路径：站内待办 + 日历订阅。</p>
+         <div class="cfg-row"><span>影响范围</span><b>仅关闭微信下发，其它端不受影响</b></div>`;
+
+    const uid = state.currentUser && state.currentUser.id;
+    const calUrl = uid ? `${location.origin}/api/users/${uid}/calendar.ics` : `${location.origin}/api/calendar.ics`;
+    $("#calUrl").value = calUrl;
+    $("#calDownload").href = calUrl.replace(location.origin, "");
+
+    updateConflictBadge();
+  } catch (e) {
+    $("#platformList").innerHTML = `<div class="empty">加载失败：${esc(e.message)}</div>`;
+    $("#pushBody").innerHTML = `<div class="empty">加载失败：${esc(e.message)}</div>`;
+  }
+}
+
+/* ---------------- 冲突治理 ---------------- */
+const SEVERITY_META = {
+  blocker: { text: "高", cls: "tag-danger" },
+  warn: { text: "中", cls: "tag-warn" },
+  info: { text: "低", cls: "tag-gray" },
+};
+const RESOLUTION_TEXT = {
+  use_a: "采用前者",
+  use_b: "采用后者",
+  both_wrong: "两者均错",
+  ignored: "忽略此项",
+};
+
+async function renderConflicts() {
+  $("#conflictList").innerHTML = '<div class="card empty">加载中…</div>';
+  try {
+    const q = [];
+    if (state.conflictSeverity) q.push(`severity=${state.conflictSeverity}`);
+    if (state.conflictShowResolved) q.push("resolved=true");
+    const res = await api("/api/conflicts" + (q.length ? "?" + q.join("&") : ""));
+    const items = res.items || [];
+
+    const sum = res.summary || {};
+    const sev = sum.by_severity || {};
+    const unresolved = sum.unresolved || 0;
+
+    $("#conflictKpi").innerHTML = [
+      kpi("冲突总数", sum.total || 0, unresolved ? `待裁决 ${unresolved} 项` : "全部已裁决",
+        unresolved > 0 ? "warn" : ""),
+      kpi("高优先级", sev.blocker || 0, "截止日期类冲突，影响可否报名", (sev.blocker || 0) > 0 ? "bad" : ""),
+      kpi("中优先级", sev.warn || 0, "地点 / 联系方式 / 年级专业要求", ""),
+      kpi("低优先级", sev.info || 0, "办理方式差异", ""),
+    ].join("");
+
+    $("#conflictSummary").textContent = items.length
+      ? `当前显示 ${items.length} 条`
+      : "未发现冲突";
+
+    if (!items.length) {
+      $("#conflictList").innerHTML = `<div class="card empty">
+        未发现冲突。<br/>
+        <span class="hint">点右上角「重新扫描」可按最新入库内容重新比对；
+        周期性通知（不同年份/学期）会自动按限定词排除，不会误报。</span>
+      </div>`;
+      updateConflictBadge();
+      return;
+    }
+
+    $("#conflictList").innerHTML = items.map((c) => {
+      const sev = SEVERITY_META[c.severity] || SEVERITY_META.info;
+      const done = c.resolved;
+      const body = done
+        ? `<div class="cf-resolved">已裁决：${esc(RESOLUTION_TEXT[c.resolution] || c.resolution || "-")}</div>`
+        : `<div class="cf-actions">
+             <button class="btn ghost sm" data-act="use_a" data-id="${c.id}">采用前者</button>
+             <button class="btn ghost sm" data-act="use_b" data-id="${c.id}">采用后者</button>
+             <button class="btn ghost sm" data-act="both_wrong" data-id="${c.id}">两者均错</button>
+             <button class="btn ghost sm" data-act="ignored" data-id="${c.id}">忽略</button>
+           </div>`;
+      return `<div class="card conflict-card ${done ? "is-resolved" : ""}">
+        <div class="cf-head">
+          <span class="tag ${sev.cls}">${sev.text}</span>
+          <span class="tag tag-gray">${esc(c.field_label || c.field)}</span>
+          ${done ? '<span class="tag tag-success">已裁决</span>' : ""}
+        </div>
+        <div class="cf-compare">
+          <div class="cf-side">
+            <div class="cf-side-title" title="${esc(c.title_a || "")}">${esc(c.title_a || "")}</div>
+            <div class="cf-side-value">${esc(c.value_a || "（空）")}</div>
+            <button class="cf-open" data-open="${c.notice_a_id}">查看原文</button>
+          </div>
+          <div class="cf-vs">≠</div>
+          <div class="cf-side">
+            <div class="cf-side-title" title="${esc(c.title_b || "")}">${esc(c.title_b || "")}</div>
+            <div class="cf-side-value">${esc(c.value_b || "（空）")}</div>
+            <button class="cf-open" data-open="${c.notice_b_id}">查看原文</button>
+          </div>
+        </div>
+        ${c.reason ? `<div class="cf-reason">${esc(c.reason)}</div>` : ""}
+        <div class="cf-foot">
+          <span class="hint">字段：${esc(c.field_label || c.field)}</span>
+          ${body}
+        </div>
+      </div>`;
+    }).join("");
+
+    updateConflictBadge();
+  } catch (e) {
+    $("#conflictList").innerHTML = `<div class="card empty">加载失败：${esc(e.message)}</div>`;
+  }
+}
+
+async function updateConflictBadge() {
+  const badge = $("#conflictBadge");
+  if (!badge) return;
+  try {
+    const res = await api("/api/conflicts");
+    const n = (res.summary && res.summary.unresolved) || 0;
+    badge.textContent = n;
+    badge.hidden = n === 0;
+  } catch (e) {
+    badge.hidden = true;
+  }
+}
+
+async function scanConflicts() {
+  const btn = $("#btnScanConflicts");
+  btn.disabled = true;
+  const old = btn.innerHTML;
+  btn.textContent = "扫描中…";
+  try {
+    const res = await api("/api/conflicts/scan", { method: "POST" });
+    toast(`扫描 ${res.scanned} 条通知，发现 ${res.found} 处冲突`);
+    renderConflicts();
+  } catch (e) {
+    toast("扫描失败：" + e.message, true);
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = old;
+  }
+}
+
+async function resolveConflict(id, resolution) {
+  try {
+    await api(`/api/conflicts/${id}`, {
+      method: "PATCH",
+      body: JSON.stringify({ resolution }),
+    });
+    toast("已记录裁决");
+    renderConflicts();
+  } catch (e) {
+    toast("裁决失败：" + e.message, true);
+  }
+}
+
 async function boot() {
   registerServiceWorker();
   bindNetworkStatus();
@@ -1804,6 +2226,50 @@ function bindEvents() {
     state.matchLevel = b.dataset.level;
     renderMatch();
   }));
+
+  /* ---- 多端接入 ---- */
+  $("#btnRefreshMobile").addEventListener("click", renderMobile);
+  $("#btnCopyCal").addEventListener("click", async () => {
+    const val = $("#calUrl").value;
+    try {
+      await navigator.clipboard.writeText(val);
+      toast("日历订阅链接已复制");
+    } catch (e) {
+      $("#calUrl").select();
+      toast("请手动复制选中的链接", true);
+    }
+  });
+
+  /* ---- 冲突治理 ---- */
+  $("#btnScanConflicts").addEventListener("click", scanConflicts);
+  $$("#conflictFilter .seg-btn").forEach((b) => b.addEventListener("click", () => {
+    $$("#conflictFilter .seg-btn").forEach((x) => x.classList.toggle("active", x === b));
+    state.conflictSeverity = b.dataset.sev;
+    renderConflicts();
+  }));
+  $("#conflictResolved").addEventListener("change", (e) => {
+    state.conflictShowResolved = e.target.checked;
+    renderConflicts();
+  });
+  /* 冲突卡片里的按钮是动态渲染的，统一用委托绑定 */
+  $("#conflictList").addEventListener("click", (e) => {
+    const act = e.target.closest("[data-act]");
+    if (act) {
+      resolveConflict(act.dataset.id, act.dataset.act);
+      return;
+    }
+    const open = e.target.closest("[data-open]");
+    if (open) openNotice(open.dataset.open);
+  });
+
+  /* 个人时间轴里的通知标题也是入口，跟冲突卡片用同一种事件委托 */
+  const tlBox = $("#myTimeline");
+  if (tlBox) {
+    tlBox.addEventListener("click", (e) => {
+      const open = e.target.closest("[data-open]");
+      if (open) openNotice(open.dataset.open);
+    });
+  }
 
   $("#qaSend").addEventListener("click", askQuestion);
   /* 「你可能还想问」是回答后动态插入的追问按钮，用事件委托绑定，

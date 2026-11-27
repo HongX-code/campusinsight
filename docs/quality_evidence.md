@@ -1,6 +1,6 @@
 # 高校智讯 · 质量证据报告
 
-> 现场采集时间：**2026-11-10 15:26:39**（Python 3.12）　|　数据来源：`docs/metrics.json`　|　复现：`python scripts/evidence.py --collect`
+> 现场采集时间：**2026-11-27 11:10:14**（Python 3.12）　|　数据来源：`docs/metrics.json`　|　复现：`python scripts/evidence.py --collect`
 
 本报告中的数字全部来自本次现场执行的退出码与标准输出，不引用历史结论；未验证事项在文末单独列出，不计入已验证范围。
 
@@ -8,10 +8,10 @@
 
 | 指标 | 现场结果 | 证据 |
 | --- | --- | --- |
-| 端到端自检 | 144 项通过 / 0 失败 | E1 |
+| 端到端自检 | 259 项通过 / 0 失败 | E1 |
 | 自检变异检出率 | 11/11 | E2 |
 | 构建门禁 | 9/9 阶段 | E3 |
-| 交付件体检 | 42 项 / 失败 0 / 跳过 0 | E4 |
+| 交付件体检 | 44 项 / 失败 0 / 跳过 0 | E4 |
 | 提示词 / 提交骨架 | 11 份 / 18 文件 | E5、E6 |
 | 本地 HTTP 端点 | 8/8 返回 200 | E9 |
 
@@ -21,10 +21,10 @@
 
 | 编号 | 证据 | 复现命令 | 退出码 | 关键结果 | 层级 |
 | --- | --- | --- | --- | --- | --- |
-| E1 | 端到端业务自检 | `python tests/test_smoke.py` | 0 | 144 项通过 / 0 失败 | L1 |
+| E1 | 端到端业务自检 | `python tests/test_smoke.py` | 0 | 259 项通过 / 0 失败 | L1 |
 | E2 | 自检变异检出率 | `python scripts/mutation_audit.py --json` | 0 | 11/11 组缺陷被检出 | L3 |
 | E3 | 构建与质量门禁 | `python scripts/ci_gate.py` | 0 | 9/9 阶段 | L1 |
-| E4 | 交付件口径体检 | `python scripts/codearts_tools.py verify --strict` | 0 | 42 项 / 失败 0 / 跳过 0 | L2 |
+| E4 | 交付件口径体检 | `python scripts/codearts_tools.py verify --strict` | 0 | 44 项 / 失败 0 / 跳过 0 | L2 |
 | E5 | 提示词单一数据源 | `python scripts/codearts_tools.py split --check` | 0 | 11 份逐字一致 | L2 |
 | E6 | 提交骨架完整性 | `python scripts/codearts_tools.py bootstrap --check` | 0 | 18 个文件齐全 | L2 |
 | E7 | 实测指标回灌 | `python scripts/sync_metrics.py` | 0 | 共同步 14 处 | L2 |
@@ -37,20 +37,20 @@
 
 | 项目 | 行数 / 数量 |
 | --- | --- |
-| Python（app + scripts + tests） | 10148 行 |
-| 前端（HTML 504 / JS 1659 / CSS 1438） | 3601 行 |
-| 合计 | 13749 行 |
-| 路由端点 | 34 个 |
-| Markdown 文档 | docs 下 18 份 + 根目录 README |
-| 界面截图 / 视图 | 20 张 / 7 个 |
+| Python（app + scripts + tests） | 16353 行 |
+| 前端（HTML 633 / JS 2298 / CSS 1698） | 4629 行 |
+| 合计 | 20982 行 |
+| 路由端点 | 49 个 |
+| Markdown 文档 | docs 下 21 份 + 根目录 README |
+| 界面截图 / 视图 | 24 张 / 9 个 |
 
 材料中的「约 N 行」是上述精确值按百位取整的概数；精确值、自检项数与端点数由 `scripts/scale_sync.py` 从 `docs/metrics.json` 自动回灌，避免人工同步漂移。
 
 ## 4. 未覆盖边界（不计入已验证）
 
-- 华为云 RDS for MySQL / DCS for Redis / MaaS 的真实连通截图与耗时
-- 公网部署、域名访问与并发压测结果
-- CodeArts 实操会话导出与七类过程截图（当前为方案、工具与空骨架）
+- 华为云 RDS for MySQL / DCS for Redis / MaaS 的真实开通与连通（当前仅 ECS/EIP/VPC 已部署，运行态为 SQLite + 规则引擎；Terraform 定义与代码适配已就绪但实测待补）
+- 域名访问与公网并发压测结果（ECS 公网 IP 访问已验证，域名与压测未做）
+- CodeArts 客户端会话导出与七类编号过程截图（当前有 auto-deploy 真实排错记录与云上截图，但非客户端会话导出，仍属待补齐）
 - 人工阅读对照实验（因此材料不写任何效率提升百分比）
 - Android / HarmonyOS 真机安装为应用、断网离线壳表现与两档视口真机截图（桌面浏览器巡检已通过，但不替代真机结论；见 docs/deployment.md 第 7.5 节清单）
 

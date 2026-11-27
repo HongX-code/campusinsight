@@ -34,9 +34,15 @@ HTTP_PATHS = ("/", "/api/health", "/api/notices?size=5", "/api/dashboard/stats",
               "/api/users", "/api/ai/status", "/docs", "/static/js/app.js")
 
 BOUNDARIES = [
-    "华为云 RDS for MySQL / DCS for Redis / MaaS 的真实连通截图与耗时",
-    "公网部署、域名访问与并发压测结果",
-    "CodeArts 实操会话导出与七类过程截图（当前为方案、工具与空骨架）",
+    # ECS/EIP/VPC 已真实部署并公网验证（见 .auto-deploy/华为云ECS部署报告.real.md），
+    # 但三件套本身仍未开通：运行态是 SQLite + 规则引擎，不能写成「全栈已上云」。
+    "华为云 RDS for MySQL / DCS for Redis / MaaS 的真实开通与连通（当前仅 ECS/EIP/VPC 已部署，"
+    "运行态为 SQLite + 规则引擎；Terraform 定义与代码适配已就绪但实测待补）",
+    "域名访问与公网并发压测结果（ECS 公网 IP 访问已验证，域名与压测未做）",
+    # 真实排错链路已归档到 11_CodeArts使用记录/（auto-deploy 技能驱动 + 人工排错，
+    # 有原始报告与截图），但客户端逐句会话导出与七类编号截图仍缺。
+    "CodeArts 客户端会话导出与七类编号过程截图"
+    "（当前有 auto-deploy 真实排错记录与云上截图，但非客户端会话导出，仍属待补齐）",
     "人工阅读对照实验（因此材料不写任何效率提升百分比）",
     "Android / HarmonyOS 真机安装为应用、断网离线壳表现与两档视口真机截图"
     "（桌面浏览器巡检已通过，但不替代真机结论；见 docs/deployment.md 第 7.5 节清单）",
@@ -322,6 +328,7 @@ def render_html(d: dict) -> str:
         .replace("__ENDPOINTS__", str(s["endpoints"])) \
         .replace("__DOCS__", str(s["docs_md"])) \
         .replace("__SHOTS__", str(s["screenshots"])) \
+        .replace("__VIEWS__", str(s.get("views") or "")) \
         .replace("__DETECTED__", str(c["mutation_detected"])) \
         .replace("__MUT_TOTAL__", str(c["mutation_total"]))
 
@@ -426,7 +433,7 @@ L3 可核验（用反向缺陷验证检查本身没失效）。</div>
  <div><b>__FRLINES__</b><span>前端（HTML __HTML_L__ / JS __JS_L__ / CSS __CSS_L__）</span></div>
  <div><b>__ENDPOINTS__</b><span>路由端点</span></div>
  <div><b>__DOCS__ + 1</b><span>Markdown 文档（docs + README）</span></div>
- <div><b>__SHOTS__</b><span>界面截图 / 7 个视图</span></div>
+ <div><b>__SHOTS__</b><span>界面截图 / __VIEWS__ 个视图</span></div>
 </div>
 <div class="note">材料中的「约 N 行」为上述精确值按百位取整的概数；精确值、自检项数与端点数由
 <code>scripts/scale_sync.py</code> 从 <code>docs/metrics.json</code> 自动回灌，避免人工同步漂移。</div>

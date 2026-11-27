@@ -6,12 +6,16 @@
 2. `data/real_notices.json` —— 由 `scripts/crawl.py` 从武汉理工大学研究生院、
    新闻经纬等公开栏目真实抓取的通知快照（含真实 URL、发布时间与附件清单）。
    构造样本保证覆盖面，真实样本证明系统面对真实网页时同样可用。
+3. `data/conflict_notices.json` —— 6 条同源多发样本（3 组），专门用来演示
+   「冲突治理」：同一件事被两个单位转发时字段被改出差异，单条解析正确也发现不了。
+   需显式加 `--with-conflicts` 才导入，避免影响开发集评测分母。
 
 用法：
     python scripts/init_db.py           # 仅建表
     python scripts/import_samples.py    # 建表 + 导入构造样本与真实样本 + 解析
     python scripts/import_samples.py --real-only
     python scripts/import_samples.py --no-analyze
+    python scripts/import_samples.py --with-conflicts   # 附带 6 条同源多发样本
 """
 from __future__ import annotations
 
@@ -31,6 +35,7 @@ from app.services.textutil import content_hash, normalize_text  # noqa: E402
 
 SAMPLE_FILE = ROOT / "data" / "sample_notices.json"
 REAL_FILE = ROOT / "data" / "real_notices.json"
+CONFLICT_FILE = ROOT / "data" / "conflict_notices.json"
 
 DEMO_USERS = [
     {"name": "张明", "grade": "大三", "major": "信息管理与信息系统",
@@ -142,6 +147,34 @@ def import_real(analyze: bool = True) -> tuple[int, int]:
     return created, skipped
 
 
+def load_conflicts() -> list[dict]:
+    """同源多发冲突样本：同一件事被两个单位分别转发，字段被改出了差异。
+
+    单独成文件（不并入 sample_notices.json）是为了不污染开发集评测口径——
+    `scripts/evaluate.py` 按 key 对齐 gold，多出来的用例会改变分母。
+    """
+    if not CONFLICT_FILE.exists():
+        return []
+    data = json.loads(CONFLICT_FILE.read_text(encoding="utf-8"))
+    return data["notices"]
+
+
+def import_conflicts(analyze: bool = True) -> tuple[int, int]:
+    db = SessionLocal()
+    created = skipped = 0
+    try:
+        items = load_conflicts()
+        for index, item in enumerate(items):
+            created_at = _created_at(item.get("publish_time", ""), index, len(items))
+            if _insert(db, item, "import", created_at, analyze):
+                created += 1
+            else:
+                skipped += 1
+    finally:
+        db.close()
+    return created, skipped
+
+
 def import_users() -> int:
     db = SessionLocal()
     count = 0
@@ -166,6 +199,8 @@ def main() -> None:
     parser.add_argument("--real-only", action="store_true", help="只导入真实采集样本")
     parser.add_argument("--samples-only", action="store_true", help="只导入构造样本")
     parser.add_argument("--no-analyze", action="store_true", help="只入库，不做解析")
+    parser.add_argument("--with-conflicts", action="store_true",
+                        help="额外导入 6 条同源多发样本，供「冲突治理」视图演示")
     args = parser.parse_args()
 
     init_db()
@@ -178,6 +213,9 @@ def main() -> None:
     if not args.samples_only:
         created, skipped = import_real(analyze=analyze)
         parts.append(f"真实采集：新增 {created} 条，跳过 {skipped} 条")
+    if args.with_conflicts:
+        created, skipped = import_conflicts(analyze=analyze)
+        parts.append(f"冲突样本：新增 {created} 条，跳过 {skipped} 条")
 
     users = import_users()
     print("；".join(parts) + f"；新增演示用户 {users} 个")

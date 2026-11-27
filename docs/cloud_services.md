@@ -203,17 +203,19 @@
 
 ```bash
 curl -s http://<ECS_IP>/api/health
-curl -s http://<ECS_IP>/api/ai/status
+# /api/health 已单点收敛：huawei.rds/dcs/maas 各自的 configured/active 一眼可见，
+# 不必再分别打多个端点自己拼结论；huawei.fallback 会说明未开通时降级到了什么。
 curl -s "http://<ECS_IP>/api/notices?size=1"
 ```
 
 | 检查项 | 期望 |
 | --- | --- |
-| `/api/health` | `status=ok`，`database.kind` 含 `MySQL / 华为云 RDS` |
-| `/api/ai/status` | `cache.kind` 含 `Redis（华为云 DCS）`；无密钥时 `active_engine=rule` |
+| `/api/health` | `status=ok`，`database.kind` 含 `MySQL / 华为云 RDS`；`huawei.rds.active=true`、`huawei.dcs.active=true`、`huawei.maas.active=true`（按实际开通情况） |
+| `/api/health` 的 `huawei.fallback` | 未开通的组件如实显示降级目标（SQLite / 内存缓存 / 规则引擎），不把"代码就绪"写成"已连通" |
 | `/api/notices` | 返回已导入通知，非空 |
 | 重启 ECS | 数据仍在（证明不是容器内 SQLite） |
 | 断开 Redis 安全组 | 业务仍可用，仅缓存降级（验证容错） |
 
-**状态边界**：上述验收在本文写作时**均未执行**（环境无凭证、无 Terraform、网络受限）；
-真实开通后需把结果、截图与退出码写入 `docs/quality_evidence.md`，再改为"已验证"。
+**状态边界**：ECS/EIP/VPC 已真实部署并公网验证（2026-11-23，见 `.auto-deploy/华为云ECS部署报告.real.md`），
+但当时运行的是 **SQLite + 规则引擎**；RDS/DCS/MaaS 的验收**尚未执行**（未开通、未拿到连通输出）。
+真实开通后需把结果、截图与退出码写入 `docs/quality_evidence.md`，再把对应 `huawei.*.active` 改为 true。

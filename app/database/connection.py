@@ -58,6 +58,8 @@ def _ensure_columns() -> None:
             "contact": "TEXT",
             "deadline_source": "VARCHAR(16) DEFAULT ''",
             "checks": "TEXT",
+            # 多轨道截止时间轴：节点列表以 JSON 存储，单值 deadline 保留作粗粒度提醒
+            "timeline": "TEXT DEFAULT '[]'",
         },
     }
     inspector = inspect(engine)

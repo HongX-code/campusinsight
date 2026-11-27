@@ -19,6 +19,12 @@ _NOISE_RE = [re.compile(p) for p in NOISE_PATTERNS]
 HEADING_RE = re.compile(r"^[（(]?[一二三四五六七八九十]+[、.）)]|^\d+[、.）)]|^第[一二三四五六七八九十]+[章节条款]")
 
 
+# 表格行用 U+001F 分隔单元格（见 services/tables.py 与 collector._table_to_text）。
+# 这类行必须原样保留：它们不是自然语言段落，任何「短行与下一行合并」「噪声行丢弃」
+# 的处理都会改变列数，而列数一旦变了，整张表的列语义就全错位。
+CELL_SEP = "\x1f"
+
+
 def clean_text(raw: str) -> str:
     """逐行清洗：丢弃导航行、超短行与重复空行。"""
     text = normalize_text(raw)
@@ -28,6 +34,10 @@ def clean_text(raw: str) -> str:
         if not line:
             if kept and kept[-1] != "":
                 kept.append("")
+            continue
+        if CELL_SEP in line:
+            # 表格行：跳过全部启发式清洗，只保留结构
+            kept.append(line)
             continue
         if len(line) <= 2 and not re.search(r"[\u4e00-\u9fa5]", line):
             continue
@@ -40,6 +50,8 @@ def clean_text(raw: str) -> str:
         prev = merged[-1] if merged else ""
         if (
             prev
+            and CELL_SEP not in prev
+            and CELL_SEP not in line
             and len(prev) < 12
             and not prev.endswith(("。", "：", ":", "！", "？"))
             and not HEADING_RE.match(prev)

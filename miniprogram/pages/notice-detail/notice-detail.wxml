@@ -1,0 +1,210 @@
+<!-- 通知详情：解析结论 → 关键字段 → 办理清单 → 原文与证据 → 操作 -->
+<view class="container">
+
+  <view wx:if="{{loading}}" class="loading">正在加载…</view>
+
+  <view wx:elif="{{error}}" class="card">
+    <view class="card-title">加载失败</view>
+    <view class="card-meta">{{error}}</view>
+    <view class="btn btn-ghost retry-btn" bindtap="retry">重试</view>
+  </view>
+
+  <block wx:else>
+
+    <!-- ---------------------------------------------------- 标题与标签 -->
+    <view class="head">
+      <view class="head-title">{{notice.title}}</view>
+      <view class="head-tags">
+        <text class="tag">{{notice.category}}</text>
+        <text wx:if="{{analysis && analysis.genre_label}}" class="tag tag-gray">{{analysis.genre_label}}</text>
+        <text wx:if="{{analysis && !analysis.actionable}}" class="tag tag-gray">资讯 · 无办理事项</text>
+        <text wx:if="{{analysis && analysis.needs_review}}" class="tag tag-warn">待人工复核</text>
+      </view>
+      <view class="head-src">{{notice.source_name}}{{notice.publish_time ? ' · ' + notice.publish_time : ''}}</view>
+    </view>
+
+    <!-- ---------------------------------------------------- 截止卡片 -->
+    <view wx:if="{{analysis && analysis.deadline}}" class="deadline-card">
+      <view class="deadline-label">{{analysis.deadline_kind || '报名'}}截止</view>
+      <view class="deadline-date">{{analysis.deadline}}</view>
+      <view wx:if="{{analysis.deadline_source}}" class="deadline-src">依据原文：{{analysis.deadline_source}}</view>
+    </view>
+
+    <!-- ---------------------------------------------------- 截止时间轴 -->
+    <!-- 一条通知里可能有多套并行的批次日期（秋季/冬季），单值卡片只能挑中一个，
+         所以这里把每个节点按轨道列出来，并标出哪几条是本人要办的。 -->
+    <view wx:if="{{timeline && timeline.length}}" class="card">
+      <view class="row-between block-head">
+        <view class="block-title">截止时间轴</view>
+        <view class="block-sub">{{timeline.length}} 个节点 · {{timelineTracks.length}} 条轨道</view>
+      </view>
+      <view class="tl-tip">同一事项在不同批次各有一组日期，按自己所在批次看对应的那一行</view>
+
+      <block wx:for="{{timelineGroups}}" wx:key="track" wx:for-item="group">
+        <view class="tl-track">
+          <view class="tl-track-head">
+            <text class="tag">{{group.track || '未标注轨道'}}</text>
+            <text class="tl-track-num">{{group.nodes.length}} 个节点</text>
+          </view>
+          <view
+            wx:for="{{group.nodes}}"
+            wx:key="seq"
+            wx:for-item="node"
+            class="tl-node {{node.scope === 'admin' ? 'tl-admin' : ''}} {{node.mine ? 'tl-mine' : ''}}"
+          >
+            <text class="tl-date">{{node.date}}</text>
+            <view class="tl-act">
+              <view class="tl-act-text">{{node.action}}</view>
+              <view class="tl-act-role">{{node.mine ? '本人办理' : (node.scope === 'admin' ? '学院办理' : node.role)}}</view>
+            </view>
+            <text class="tl-left {{node.overdue ? 'tl-due' : ''}}">{{node.left_text}}</text>
+          </view>
+        </view>
+      </block>
+
+      <view class="tl-foot">每个节点都逐条核对过原文日期与事项，对不上原文的节点会被剔除</view>
+    </view>
+
+    <!-- ---------------------------------------------------- 关键字段 -->
+    <view wx:if="{{analysis}}" class="card">
+      <view class="block-title">解析出的关键信息</view>
+
+      <view wx:if="{{analysis.grade_requirement}}" class="kv">
+        <text class="kv-k">年级要求</text>
+        <text class="kv-v">{{analysis.grade_requirement}}</text>
+      </view>
+      <view wx:if="{{analysis.major_requirement}}" class="kv">
+        <text class="kv-k">专业要求</text>
+        <text class="kv-v">{{analysis.major_requirement}}</text>
+      </view>
+      <view wx:if="{{analysis.target}}" class="kv">
+        <text class="kv-k">面向对象</text>
+        <text class="kv-v">{{analysis.target}}</text>
+      </view>
+      <view wx:if="{{analysis.event_time}}" class="kv">
+        <text class="kv-k">活动时间</text>
+        <text class="kv-v">{{analysis.event_time}}</text>
+      </view>
+      <view wx:if="{{analysis.location}}" class="kv">
+        <text class="kv-k">地点</text>
+        <text class="kv-v">{{analysis.location}}</text>
+      </view>
+      <view wx:if="{{analysis.apply_method}}" class="kv">
+        <text class="kv-k">办理方式</text>
+        <text class="kv-v">{{analysis.apply_method}}</text>
+      </view>
+      <view wx:if="{{analysis.contact}}" class="kv">
+        <text class="kv-k">联系方式</text>
+        <text class="kv-v">{{analysis.contact}}</text>
+      </view>
+
+      <view wx:if="{{analysis.conditions && analysis.conditions.length}}" class="kv-block">
+        <view class="kv-k">附加条件</view>
+        <view wx:for="{{analysis.conditions}}" wx:key="*this" class="bullet">{{item}}</view>
+      </view>
+
+      <!-- 置信度：不确定就明说，不假装确定 -->
+      <view class="conf-row">
+        <view class="conf-bar">
+          <view class="conf-fill" style="width: {{(analysis.confidence || 0) * 100}}%"></view>
+        </view>
+        <text class="conf-text">解析置信度 {{analysis.confidence || 0}}</text>
+      </view>
+      <view wx:if="{{analysis.needs_review}}" class="review-tip">
+        该条置信度偏低或有字段未在原文定位到，已标记为待复核。
+      </view>
+    </view>
+
+    <!-- ---------------------------------------------------- 办理清单 -->
+    <view wx:if="{{analysis && analysis.actionable !== false}}" class="card">
+      <view class="row-between block-head">
+        <view class="block-title">办理清单</view>
+        <view wx:if="{{checklist && checklist.stats}}" class="block-sub">
+          {{checklist.stats.total}} 步
+          <text wx:if="{{checklist.stats.offline > 0}}"> · 线下 {{checklist.stats.offline}}</text>
+        </view>
+      </view>
+
+      <view wx:if="{{!checklist}}" class="empty-mini">清单不可用</view>
+      <view wx:elif="{{checklist.degraded}}" class="empty-mini">{{checklist.reason || '暂无可拆解的办理步骤'}}</view>
+      <view wx:elif="{{checklist.steps.length === 0}}" class="empty-mini">原文未发现可拆解的办理步骤</view>
+
+      <block wx:else>
+        <view
+          wx:for="{{checklist.steps}}"
+          wx:key="seq"
+          class="step"
+          data-seq="{{item.seq}}"
+          bindtap="toggleStep"
+        >
+          <view class="step-left">
+            <view class="step-no {{item.offline ? 'step-no-off' : ''}}">{{item.seq}}</view>
+            <view wx:if="{{index < checklist.steps.length - 1}}" class="step-line"></view>
+          </view>
+
+          <view class="step-body">
+            <view class="step-title">{{item.title}}</view>
+            <view class="step-tags">
+              <text class="tag {{item.offline ? 'tag-warn' : 'tag-success'}}">
+                {{item.offline ? '线下办理' : '线上办理'}}
+              </text>
+              <text wx:if="{{item.depends_on}}" class="tag tag-gray">
+                需先完成第 {{item.depends_on}} 步
+              </text>
+            </view>
+            <view wx:if="{{expanded[item.seq] && item.evidence}}" class="step-evidence">
+              原文依据：{{item.evidence}}
+            </view>
+            <view wx:if="{{item.detail}}" class="step-detail">{{item.detail}}</view>
+          </view>
+        </view>
+      </block>
+    </view>
+
+    <!-- ---------------------------------------------------- 待办操作 -->
+    <view class="card action-card">
+      <view wx:if="{{!task}}" class="btn btn-primary" bindtap="addTask">加入我的待办</view>
+      <block wx:else>
+        <view class="row-between">
+          <view class="grow">
+            <view class="task-status">
+              {{task.status === 'todo' ? '未开始' : (task.status === 'doing' ? '进行中' : '已完成')}}
+            </view>
+            <view class="task-hint">点右侧切换状态</view>
+          </view>
+          <view class="btn btn-ghost task-btn" bindtap="cycleTask">切换</view>
+        </view>
+        <view class="btn btn-ghost remove-btn" bindtap="removeTask">移出待办</view>
+      </block>
+
+      <view class="btn btn-ghost sub-btn" bindtap="subscribe">开启微信截止提醒</view>
+    </view>
+
+    <!-- ---------------------------------------------------- 原文 -->
+    <view class="card">
+      <view class="block-title">通知原文</view>
+      <view class="content-text">{{notice.content}}</view>
+      <view wx:if="{{notice.source_url}}" class="link-row" bindtap="copyLink">
+        <text class="link-text ellipsis">{{notice.source_url}}</text>
+        <text class="link-copy">复制</text>
+      </view>
+    </view>
+
+    <!-- ---------------------------------------------------- 证据 -->
+    <view wx:if="{{evidence.length > 0}}" class="card">
+      <view class="block-title">字段溯源</view>
+      <view wx:for="{{evidence}}" wx:key="key" class="ev-row">
+        <text class="ev-k">{{item.key}}</text>
+        <text class="ev-v">{{item.value}}</text>
+      </view>
+      <view class="ev-note">
+        每个字段都能在原文中定位到对应片段，定位不到的一律留空而不是猜一个。
+      </view>
+    </view>
+
+    <view wx:if="{{analysis && analysis.engine}}" class="engine-note">
+      解析引擎：{{analysis.engine}}{{analysis.model_name ? ' · ' + analysis.model_name : ''}}
+    </view>
+
+  </block>
+</view>

@@ -18,6 +18,8 @@ from __future__ import annotations
 
 import re
 
+from app.services import tables as tables_mod
+
 # 设计文档 8.2 里「约束类 / 时间类 / 联络类」字段的统一契约。
 # 这些是字面事实，由本模块确定性抽取，不交给生成式模型（见 analyzer 的说明）。
 FIELD_KEYS: tuple[str, ...] = (
@@ -111,9 +113,25 @@ LOCATION_NOCOLON = re.compile(
     r"(?:报名|活动|会议|讲座|报告|比赛|考试|答辩|现场)?\s*"
     r"(?:地点|地址|场所|会场)\s*在\s*([^，,。；;\n]{2,40})"
 )
+# "地点为东院行政楼302会议室"，公文里最常见的写法，比冒号式更普遍
+LOCATION_WEI = re.compile(
+    r"(?:报名|活动|会议|讲座|报告|比赛|考试|答辩|现场|培训|服务)?\s*"
+    r"(?:地点|地址|场所|会场)\s*(?:为|是)\s*([^，,。；;\n]{2,40})"
+)
+# 小标题独占一行、取值在下一行（"二、活动地点\n南湖校区大学生活动中心一层大厅"）
+LOCATION_HEADING = re.compile(
+    r"(?:报名|活动|会议|讲座|报告|比赛|考试|答辩|现场|培训|服务)?\s*"
+    r"(?:地点|地址|场所|会场)\s*\n+\s*([^，,。；;\n]{2,40})"
+)
 LOCATION_VENUE = re.compile(r"在\s*([^，,。；;\n]{2,30}?)\s*(?:举行|举办|召开|开展|进行)")
 LOCATION_STOP = ("网上", "线上", "系统", "平台", "邮箱", "网站", "另行通知", "待定", "详见")
 PHONE_RE = re.compile(r"(?<!\d)(?:0\d{2,3}[- ]?)?\d{7,8}(?!\d)|(?<!\d)1[3-9]\d{9}(?!\d)")
+# URL 里的 7-8 位数字（`t20250425_1326927.shtml`）会被 PHONE_RE 当成电话，
+# 实测《关于2025年秋冬季…》contact.phone 抽出了 `1326927` 这种垃圾值，
+# 上下文是 `interpretation/bmjd/202504/t20250425_1326927.shtml）精神传`。
+# 抽电话前先把 URL 整体抹掉，比事后按数字形态过滤可靠——事后过滤分不清
+# 「1326927」到底是网址编号还是短号电话。
+_URL_RE = re.compile(r"(?:https?://|www\.)[^\s，。；;）)】\"']+", re.IGNORECASE)
 EMAIL_RE = re.compile(r"[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}")
 PERSON_RE = re.compile(r"(?:联系人|咨询人|联系老师)\s*[:：]?\s*([\u4e00-\u9fa5]{2,4})")
 
@@ -280,9 +298,13 @@ def extract_times(text: str, dates: list[dict], deadline: str | None) -> tuple[s
 
 
 def extract_location(text: str) -> tuple[str, str]:
-    for pattern in (LOCATION_LABEL, LOCATION_NOCOLON, LOCATION_VENUE):
+    for pattern in (LOCATION_LABEL, LOCATION_NOCOLON, LOCATION_WEI, LOCATION_HEADING,
+                    LOCATION_VENUE):
         for m in pattern.finditer(text):
             value = m.group(1).strip(" \t：:，,。;；")
+            # 小标题式取值会带上行尾编号（"南湖校区大学生活动中心一层大厅。"），
+            # 后面的句号被 strips 掉即可；这里再兜底切掉残留的顿号与括号
+            value = value.strip("、，,。;；（）()")
             if not value or len(value) > 40 or any(k in value for k in LOCATION_STOP):
                 continue
             if not re.search(r"[\u4e00-\u9fa5]", value):
@@ -296,8 +318,11 @@ def extract_contact(text: str) -> tuple[dict, str]:
     m = PERSON_RE.search(text)
     if m:
         person = m.group(1)
-    phones = _unique(PHONE_RE.findall(text))[:3]
-    emails = _unique(EMAIL_RE.findall(text))[:3]
+    # 先抹掉 URL 再找电话：网址里的 7-8 位数字（`t20250425_1326927.shtml`）
+    # 会被 PHONE_RE 匹配成电话，而且出现频率比真电话还高。
+    cleaned = _URL_RE.sub(" ", text)
+    phones = _unique(PHONE_RE.findall(cleaned))[:3]
+    emails = _unique(EMAIL_RE.findall(cleaned))[:3]
     # 过滤明显是日期或编号的 7-8 位数字（如 20261120、学号片段）
     phones = [p for p in phones if not re.fullmatch(r"20\d{6}", p)]
     if not (person or phones or emails):
@@ -320,6 +345,23 @@ def extract_structured(text: str, dates: list[dict], target: list[str],
     location, loc_ev = extract_location(text)
     contact, contact_ev = extract_contact(text)
 
+    # 表格补位：招生计划表里的「学院 / 专业名称 / 咨询电话」是正文段落抽不到的。
+    # 只在正文没抽到、或抽到得比表格少时才补——正文显式写「面向材料学院」
+    # 比表格里一列学院名更可信，不能被表格覆盖。
+    sheet = tables_mod.extract(text)
+    if sheet["tables"]:
+        table_major = _unique(sheet["colleges"] + sheet["majors"])
+        if table_major and len(table_major) > len(major):
+            major = table_major[:12]
+        if sheet["phones"]:
+            have = set(contact.get("phone") or [])
+            extra = [p for p in sheet["phones"] if p not in have]
+            if extra:
+                contact = dict(contact or {})
+                contact["phone"] = _unique((contact.get("phone") or []) + extra)[:8]
+                contact.setdefault("person", "")
+                contact.setdefault("email", [])
+
     fields = {
         "grade_requirement": grade,
         "major_requirement": major,
@@ -329,6 +371,22 @@ def extract_structured(text: str, dates: list[dict], target: list[str],
         "contact": contact,
     }
     evidence: dict[str, str] = {}
+    # 表格补位的证据：取命中的那个单元格本身。
+    # 不能把整行用「、」拼起来当证据——原文里单元格之间是分隔符，
+    # 拼装串在正文中定位不到，analyzer 的接地校验会把它判成编造并整字段丢弃。
+    if sheet["tables"]:
+        for table in sheet["tables"]:
+            for row in table["rows"]:
+                cells = [c for c in row if c]
+                if not cells:
+                    continue
+                for c in cells:
+                    if major and c in major:
+                        evidence.setdefault("major_requirement", c[:80])
+                    if contact and c in (contact.get("phone") or []):
+                        evidence.setdefault("contact", c[:80])
+            if "major_requirement" in evidence and "contact" in evidence:
+                break
     # 证据必须是原文中的连续片段，不能是拼接出来的归一化结果，
     # 否则 analyzer 的 grounding 校验会把合法字段误判成模型编造。
     if grade:

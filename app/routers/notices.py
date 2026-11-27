@@ -78,6 +78,7 @@ def run_analysis(db: Session, notice: Notice, use_llm: bool | None = None) -> di
     record.materials = json.dumps(result["materials"], ensure_ascii=False)
     record.apply_method = result["apply_method"]
     record.evidence = json.dumps(result["evidence"], ensure_ascii=False)
+    record.timeline = json.dumps(result.get("timeline_nodes") or [], ensure_ascii=False)
     record.confidence = result["confidence"]
     record.needs_review = result["needs_review"]
     record.engine = result["engine"]

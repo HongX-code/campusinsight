@@ -1,0 +1,139 @@
+/* 吸顶筛选区：搜索 + 分类，滚动时保持在顶部 */
+.sticky-head {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  background: var(--bg);
+  padding: 20rpx 28rpx 0;
+}
+
+.search-box {
+  display: flex;
+  align-items: center;
+  height: 76rpx;
+  background: var(--surface);
+  border-radius: 999rpx;
+  padding: 0 26rpx;
+  box-shadow: 0 2rpx 8rpx rgba(15, 23, 42, 0.04);
+}
+
+/* 纯 CSS 画的放大镜，不用图片也不用字符图标 */
+.search-icon {
+  flex: none;
+  width: 26rpx;
+  height: 26rpx;
+  border: 3rpx solid var(--text-tertiary);
+  border-radius: 50%;
+  position: relative;
+  margin-right: 18rpx;
+}
+
+.search-icon::after {
+  content: '';
+  position: absolute;
+  right: -10rpx;
+  bottom: -7rpx;
+  width: 14rpx;
+  height: 3rpx;
+  background: var(--text-tertiary);
+  border-radius: 2rpx;
+  transform: rotate(45deg);
+}
+
+.search-input {
+  flex: 1;
+  height: 76rpx;
+  font-size: 28rpx;
+  color: var(--text-primary);
+}
+
+.search-ph {
+  color: var(--text-tertiary);
+}
+
+.search-clear {
+  flex: none;
+  width: 40rpx;
+  height: 40rpx;
+  line-height: 36rpx;
+  text-align: center;
+  border-radius: 50%;
+  background: #F3F4F6;
+  color: var(--text-secondary);
+  font-size: 30rpx;
+}
+
+/* ------------------------------------------------------------ 分类横滑 */
+.cat-scroll {
+  white-space: nowrap;
+  margin-top: 20rpx;
+  width: 100%;
+}
+
+.cat-chip {
+  display: inline-block;
+  padding: 10rpx 26rpx;
+  margin-right: 14rpx;
+  border-radius: 999rpx;
+  background: var(--surface);
+  color: var(--text-secondary);
+  font-size: 24rpx;
+  white-space: nowrap;
+}
+
+.cat-chip-on {
+  background: var(--primary);
+  color: #FFFFFF;
+  font-weight: 500;
+}
+
+.list-count {
+  font-size: 22rpx;
+  color: var(--text-tertiary);
+  padding: 18rpx 4rpx 6rpx;
+}
+
+/* ---------------------------------------------------------------- 列表 */
+.list-body {
+  padding-top: 4rpx;
+}
+
+.meta-row {
+  margin-top: 16rpx;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12rpx;
+}
+
+.src-row {
+  margin-top: 16rpx;
+  display: flex;
+  align-items: center;
+  font-size: 22rpx;
+  color: var(--text-tertiary);
+}
+
+.src-name {
+  max-width: 60%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.src-time {
+  margin-left: auto;
+}
+
+.retry-btn {
+  margin-top: 24rpx;
+  width: 300rpx;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.list-end {
+  text-align: center;
+  font-size: 22rpx;
+  color: var(--text-tertiary);
+  padding: 36rpx 0 20rpx;
+}

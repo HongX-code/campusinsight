@@ -6,7 +6,9 @@
 """
 from __future__ import annotations
 
+import json
 import os
+import re
 import sys
 import tempfile
 from pathlib import Path
@@ -22,6 +24,7 @@ os.environ["LLM_PROVIDER"] = "none"
 from fastapi.testclient import TestClient  # noqa: E402
 from sqlalchemy import select, text  # noqa: E402
 
+from app.config import settings as app_settings  # noqa: E402
 from app.database.connection import SessionLocal, init_db  # noqa: E402
 from app.database.models import UserTask  # noqa: E402
 from app.main import app  # noqa: E402
@@ -307,7 +310,7 @@ def main() -> int:
 
         # ============================================================
         print("\n[13] 结构化字段契约、规则校验与人工审核闭环")
-        from app.services import reltime, validator                    # noqa: E402
+        from app.services import reltime, timeline as timeline_mod, validator  # noqa: E402
         from app.services.extractor import extract                    # noqa: E402
         from app.services.matcher import match_one                    # noqa: E402
 
@@ -370,6 +373,318 @@ def main() -> int:
         rep = validator.audit(low, "原文写明了报名要求。", "2026-11-06")
         check("低置信度只作软提示、不硬拦截",
               rep["ok"] and any("置信度" in x for x in rep["warnings"]), str(rep))
+
+        # ---------------- 多轨道截止时间轴 ----------------
+        # 这段合成文本照抄真实学位授予通知的写法：同一句话里「X月X日（秋季）
+        # 和Y月Y日（冬季）」，两条轨道并行推进。单值 deadline 只能留下一个日期。
+        TL_TEXT = (
+            "一、博士学位申请人预答辩\n"
+            "7月2日（秋季）和10月8日（冬季）前，博士学位申请人预答辩截止。\n"
+            "二、答辩意向申请\n"
+            "7月7日（秋季）和10月10日（冬季）前，有申请意向的硕士学位申请人须在系统中提交答辩意向申请。\n"
+            "7月3日（秋季）和10月9日（冬季）前，有申请学位意向的博士学位申请人须在系统中提交答辩意向申请。\n"
+            "三、答辩前检测\n"
+            "7月8日（秋季）和10月12日（冬季），硕士学位论文与实践成果总结报告“答辩前检测”截止。\n"
+            "四、学院审议\n"
+            "10月8日（秋季）和12月2日（冬季），各学院学位分会学位授予审议截止。\n"
+        )
+        tl = timeline_mod.extract(TL_TEXT, "2026-06-15")
+        check("时间轴识别出秋季与冬季两条轨道",
+              tl["tracks"] == ["秋季", "冬季"], str(tl["tracks"]))
+        check("时间轴节点数多于单值字段所能承载",
+              len(tl["nodes"]) >= 6 and tl["stats"]["total"] == len(tl["nodes"]),
+              f"只产出 {len(tl['nodes'])} 个节点")
+        master = timeline_mod.for_role(tl["nodes"], "硕士研究生")
+        check("硕士生的个人时间轴不串入博士节点",
+              master and all("硕士" in n["role"] for n in master),
+              str([(n["date"], n["role"]) for n in master]))
+        check("硕士秋季轨道取到 7 月而非 10 月",
+              any(n["date"] == "2026-07-07" for n in timeline_mod.for_role(
+                  tl["nodes"], "硕士研究生", "秋季")),
+              str([n["date"] for n in timeline_mod.for_role(tl["nodes"], "硕士研究生", "秋季")]))
+        admin_nodes = [n for n in tl["nodes"] if n["scope"] == "admin"]
+        check("学院审议节点被标为管理侧而非学生待办",
+              bool(admin_nodes) and all(n["role"] == "学院" for n in admin_nodes),
+              str([(n["date"], n["role"]) for n in admin_nodes]))
+        check("个人时间轴永不返回管理节点",
+              all(n["scope"] == "student" for n in timeline_mod.for_role(tl["nodes"], "硕士研究生"))
+              and all(n["scope"] == "student" for n in timeline_mod.for_role(tl["nodes"], "博士研究生")))
+        check("年级口语被归一到身份词",
+              timeline_mod.role_from_user("博二") == "博士研究生"
+              and timeline_mod.role_from_user("研三") == "硕士研究生"
+              and timeline_mod.role_from_user("大三") == "本科生"
+              and timeline_mod.role_from_user("") == "")
+
+        # 单值字段与时间轴必须同时进结果：单值留作兼容，时间轴承载真实网格
+        tl_an = analyze("关于2026年秋冬季博士、硕士学位授予工作安排的通知",
+                        TL_TEXT, "2026-06-15", use_llm=False)
+        check("解析结果同时带单值截止与时间轴",
+              tl_an["deadline"] == "2026-10-08" and len(tl_an["timeline_nodes"]) >= 6,
+              f"{tl_an['deadline']} / {len(tl_an['timeline_nodes'])}")
+        check("单值截止恰好是硕士生用不上的那个日期",
+              not any(n["date"] == tl_an["deadline"]
+                      for n in timeline_mod.for_role(tl_an["timeline_nodes"], "硕士研究生")),
+              "单值日期落进了硕士轨道，说明举证文本选错了")
+        check("时间轴节点通过 C10 原文接地校验",
+              any("C10" in p for p in tl_an["checks"]["passed"]), str(tl_an["checks"]["issues"]))
+
+        # C10 的反向验证：节点日期在原文中不存在时必须被剔除
+        fake = {"deadline": None, "confidence": 0.8, "actionable": True,
+                "timeline_nodes": [
+                    {"seq": 1, "date": "2026-07-02", "track": "秋季", "role": "博士研究生",
+                     "scope": "student", "action": "预答辩", "evidence": "博士学位申请人预答辩截止"},
+                    {"seq": 2, "date": "2027-03-09", "track": "秋季", "role": "博士研究生",
+                     "scope": "student", "action": "编造的节点", "evidence": "原文没有这句"},
+                ],
+                "timeline_stats": {"total": 2}}
+        rep = validator.audit(fake, TL_TEXT, "2026-06-15")
+        check("时间轴编造节点被 C10 剔除并记入问题",
+              len(fake["timeline_nodes"]) == 1
+              and fake["timeline_stats"]["total"] == 1
+              and any("时间轴" in x and "剔除" in x for x in rep["issues"]),
+              str(rep["issues"]))
+
+        # 表格行的动作串必须止于「工作内容」一格。
+        # 单元格分隔符 U+001F 若不算分句边界，整行会被当成一句，
+        # 动作串就一路吞到「星期」「周次」列，学生会看到
+        # 「各学院返回毕业答辩登记表至培养处各学院星期三第二周」这种句子。
+        TL_TABLE = (
+            "序号\x1f截止日期\x1f工作内容\x1f完成单位\x1f星期\x1f周次\n"
+            "4\x1f8 月 30 日\x1f反馈《毕业生答辩登记表》至培养处\x1f培养处\x1f星期五\x1f预备周\n"
+            "5\x1f9 月 11 日\x1f各学院报送毕业答辩登记表至培养处\x1f各学院\x1f星期三\x1f第二周\n"
+            "7\x1f9 月 23 日\x1f答辩截止\x1f各学院\x1f星期一\x1f第四周"
+        )
+        tl_tb = timeline_mod.extract(TL_TABLE, "2019-09-04")
+        tb_bad = [n for n in tl_tb["nodes"]
+                  if any(w in n["action"] for w in ("星期", "周次", "预备周", "第"))
+                  or "\x1f" in n["action"]]
+        check("表格行的动作串不吞右侧的星期与周次列", not tb_bad, str(tb_bad))
+        check("表格行按单元格取动作而不是整行拼接",
+              any(n["action"] == "答辩" for n in tl_tb["nodes"])
+              and any("反馈《毕业生答辩登记表》" in n["action"] for n in tl_tb["nodes"]),
+              str([n["action"] for n in tl_tb["nodes"]]))
+
+        # 年份锚：标题里的「YYYY年」优先于页面发布时间。
+        # 实测 2019 秋季学位授予通知的页面标签写着「发布时间：2020-09-04」，
+        # 若按发布时间补年份，同一份通知的节点会裂成 2019 与 2020 两截。
+        check("标题年份覆盖写错的发布年份",
+              [n["date"][:4] for n in tl_tb["nodes"]] == ["2019"] * len(tl_tb["nodes"]),
+              str([n["date"] for n in tl_tb["nodes"]]))
+        tl_tb_plain = timeline_mod.extract(TL_TABLE, "2019-09-04")
+        check("标题没有年份时完全退回发布时间",
+              [n["date"] for n in tl_tb_plain["nodes"]]
+              == [n["date"] for n in timeline_mod.extract(TL_TABLE, "2019-09-04", "")["nodes"]],
+              "空标题与缺省标题的结果必须一致")
+        check("标题年份与发布年份一致时不改变结果",
+              [n["date"] for n in timeline_mod.extract(TL_TABLE, "2019-09-04", "2019年秋季安排")["nodes"]]
+              == [n["date"] for n in tl_tb["nodes"]],
+              "同年份标题不应产生任何差异")
+        check("标题年份只认四位年份不认月份写法",
+              timeline_mod._title_year("关于2026-06的安排") is None
+              and timeline_mod._title_year("2026年秋季安排") == 2026,
+              "月份写法不能被当成年份锚")
+
+        # 表格行里「完成单位」常写「各学院、各研究生」这种混合值，
+        # 真正动手的是谁要看「工作内容」那一格。只看完成单位的话，
+        # 「研究生在系统里上传送审论文」会被判成学院办理，个人时间轴上就没了。
+        TL_UNIT = (
+            "序号\x1f截止日期\x1f工作内容\x1f完成单位\x1f星期\x1f周次\n"
+            "1\x1f9 月 11 日\x1f研究生在系统里上传送审论文\x1f各学院、各研究生\x1f星期五\x1f第一周\n"
+            "2\x1f9 月 20 日\x1f培养处下发秋季毕业生答辩登记表\x1f培养处\x1f星期一\x1f第二周\n"
+            "3\x1f9 月 23 日\x1f①各学院上交学位材料至学位办 ②各学院上交毕业名单\x1f各学院\x1f星期三\x1f第三周"
+        )
+        tl_unit = timeline_mod.extract(TL_UNIT, "2019-09-04", "2019年秋季安排")
+        by_action = {n["action"]: n for n in tl_unit["nodes"]}
+        check("表格行动作格写明研究生时判为学生侧",
+              by_action.get("研究生在系统里上传送审论文", {}).get("scope") == "student",
+              str([(n["action"], n["scope"]) for n in tl_unit["nodes"]]))
+        check("表格行完成单位是培养处时判为管理侧",
+              by_action.get("培养处下发秋季毕业生答辩登记表", {}).get("scope") == "admin",
+              str([(n["action"], n["scope"]) for n in tl_unit["nodes"]]))
+        check("表格行并列多件事只取第一件",
+              any("上交学位材料" in n["action"] for n in tl_unit["nodes"])
+              and not any("毕业名单" in n["action"] for n in tl_unit["nodes"]),
+              str([n["action"] for n in tl_unit["nodes"]]))
+
+        # ================= 表格结构复原（创新点五） =================
+        # 这一组断言守的是同一件事：二维表在采集期就不能被压成一维串。
+        # 列边界一旦丢掉，下游再怎么改正则也补不回来——所以断言必须打在
+        # 「分隔符有没有穿过清洗链路」和「列语义有没有还原」这两个点上。
+        from app.services import collector as collector_mod  # noqa: E402
+        from app.services import cleaner as cleaner_mod      # noqa: E402
+        from app.services import tables as tables_mod        # noqa: E402
+        from app.services import fields as fields_mod_tb     # noqa: E402
+        from app.services import extractor as extractor_mod   # noqa: E402
+        from app.services import analyzer as analyzer_mod     # noqa: E402
+
+        TB_HTML = """<div class="content">
+        <p>一、少数民族高层次骨干人才计划，面向博士研究生（专项计划）。</p>
+        <p>（一）招生专业及拟招生计划：</p>
+        <table><tr><th>学院名称</th><th>专业代码</th><th>专业名称</th><th>拟招生计划</th><th>咨询电话</th></tr>
+        <tr><td>材料科学与工程学院</td><td>085600</td><td>材料与化工</td><td>1</td><td>027-87164677</td></tr>
+        <tr><td>机电工程学院</td><td>080200</td><td>机械工程</td><td>1</td><td>027-87218976</td></tr>
+        <tr><td>信息工程学院</td><td>085400</td><td>电子信息</td><td>1</td><td>027-87651806</td></tr>
+        </table>
+        <p>（二）网上报名、缴费、材料提交截止时间：2026年6月12日前</p></div>"""
+        tb_page = collector_mod.parse_detail(TB_HTML, "http://x/a.shtml")
+        tb_text = tb_page["content"]
+
+        check("表格单元格在采集期保留列边界",
+              collector_mod.TABLE_CELL_SEP in tb_text
+              and "材料科学与工程学院" + collector_mod.TABLE_CELL_SEP + "085600" in tb_text,
+              repr(tb_text[:160]))
+
+        check("列边界分隔符能穿过正文清洗",
+              collector_mod.TABLE_CELL_SEP in cleaner_mod.clean_text(tb_text),
+              repr(cleaner_mod.clean_text(tb_text)[:160]))
+
+        tb_tables = tables_mod.parse(tb_text)
+        check("表格被识别为招生计划表且列数正确",
+              len(tb_tables) == 1 and tb_tables[0]["columns"] == 5
+              and tb_tables[0]["kind"] == "major_plan",
+              str([(t["columns"], t["kind"]) for t in tb_tables]))
+
+        check("表头列语义按语义映射而不是按位置猜",
+              bool(tb_tables) and tb_tables[0]["kinds"] == ["college", "major_code",
+                                                            "major_name", "plan", "phone"],
+              str(tb_tables[0]["kinds"] if tb_tables else []))
+
+        tb_sheet = tables_mod.extract(tb_text)
+        check("表格按列还原出学院与专业列表",
+              tb_sheet["stats"]["colleges"] == 3 and tb_sheet["stats"]["majors"] == 3
+              and "材料科学与工程学院" in tb_sheet["colleges"]
+              and "材料与化工" in tb_sheet["majors"],
+              str(tb_sheet["stats"]))
+
+        check("表格里的咨询电话保留区号且不被截断",
+              tb_sheet["phones"] == ["027-87164677", "027-87218976", "027-87651806"],
+              str(tb_sheet["phones"]))
+
+        # 一维压平文本不应该被"猜"成表格：没有列边界就是没有，宁可返回空。
+        flat_text = "学院名称专业代码专业名称\n085600材料与化工1027-87164677"
+        check("压平文本不会被误判成表格",
+              tables_mod.parse(flat_text) == [], str(tables_mod.parse(flat_text)))
+
+        _SEP = tables_mod.CELL_SEP
+
+        # 旧版压平的存量正文，列边界不可复原。这里能做的、也应该做的只有
+        # 一件事：把它认出来并明确要求重新采集，而不是假装能猜回来。
+        _stale = ("学院名称专业代码专业名称\n"
+                  "拟招生计划咨询电话材料科学与工程学院\n"
+                  "085600材料与化工1027-87164677\n"
+                  "1027-87218976")
+        _stale_sheet = tables_mod.extract(_stale)
+        check("压平正文被标记为需要重新采集",
+              _stale_sheet["needs_recollect"] is True
+              and _stale_sheet["tables"] == []
+              and "重新采集" in _stale_sheet["reason"],
+              str(_stale_sheet["stats"]) + " / " + str(_stale_sheet["reason"]))
+
+        # 只有单个表格特征时不能误判：正文里提一个电话、一处学院名都很常见。
+        check("只提到电话或学院名的正文不算压平的表格",
+              tables_mod.needs_recollect("请咨询材料科学与工程学院，电话 027-87164677。")
+              is False, "误判为压平表格")
+
+        # 新版采集的正文带列边界，绝不能被标成待重新采集。
+        check("已有列边界的正文不被标记为待重新采集",
+              tables_mod.needs_recollect(
+                  "材料科学与工程学院" + _SEP + "085600" + _SEP + "材料与化工"
+                  + _SEP + "1" + _SEP + "027-87164677") is False,
+              "误标为压平表格")
+
+        # URL 里的 7 位编号曾被当成电话（t20250425_1326927.shtml）
+        tb_contact, _ = fields_mod_tb.extract_contact(
+            "详见 https://x.edu.cn/a/t20250425_1326927.shtml 的说明，咨询电话 027-87164677。")
+        check("URL 里的数字不会被当成联系电话",
+              tb_contact["phone"] == ["027-87164677"], str(tb_contact["phone"]))
+
+        # 身份词：正文只有「研究生院」「研究生专项计划」时不得兜成硕士研究生
+        check("机构名里的「研究生」不被当成本科或硕士受众",
+              extractor_mod._canon_targets("武汉理工大学研究生院研究生专项计划") == [],
+              str(extractor_mod._canon_targets("武汉理工大学研究生院研究生专项计划")))
+
+        tb_target, _ = extractor_mod._extract_target(
+            "一、少数民族高层次骨干人才计划，面向博士研究生（专项计划）。",
+            "关于我校2026年部分博士研究生（专项计划）补充报名的通知")
+        check("标题里的学历层次参与受众判定",
+              tb_target == ["博士研究生"], str(tb_target))
+
+        tb_an = analyzer_mod.analyze(
+            "关于我校2026年部分博士研究生（专项计划）补充报名的通知",
+            tb_text, "2026-06-09")
+        check("表格通知的受众不再判反成硕士研究生",
+              tb_an["target"] == ["博士研究生"], str(tb_an["target"]))
+        check("表格通知的专业限制由表格补全",
+              "材料科学与工程学院" in tb_an["major_requirement"]
+              and "材料与化工" in tb_an["major_requirement"],
+              str(tb_an["major_requirement"]))
+        check("表格通知的联系电话带区号且齐全",
+              tb_an["contact"]["phone"] == ["027-87164677", "027-87218976", "027-87651806"],
+              str(tb_an["contact"]["phone"]))
+        check("解析结果带表格统计供界面说明来源",
+              tb_an.get("table_stats", {}).get("total") == 1
+              and bool(tb_an.get("table_detail")),
+              str(tb_an.get("table_stats")))
+        check("表格字段通过 C11 列序接地校验",
+              any("C11" in p for p in tb_an["checks"]["passed"])
+              and not any("C11" in i for i in tb_an["checks"]["issues"]),
+              str(tb_an["checks"]["issues"]))
+
+        # C11 反向：列错位的值必须被拦下，而不是静静通过
+        bad_tb = dict(tb_an)
+        bad_tb["major_requirement"] = list(tb_an["major_requirement"]) + ["不存在的学院"]
+        tb_rep = validator.audit(bad_tb, tb_text, "2026-06-09",
+                                 "关于我校2026年部分博士研究生（专项计划）补充报名的通知")
+        check("C11 拦下无法回放原文的表格字段",
+              any("C11" in i and "回放" in i for i in tb_rep["issues"]),
+              str(tb_rep["issues"]))
+
+        # 无表格正文不应被表格逻辑影响
+        plain_an = analyzer_mod.analyze(
+            "关于开展2026年暑期社会实践的通知",
+            "各学院：请于2026年7月10日前提交社会实践总结材料，面向全体本科生。", "2026-06-01")
+        check("无表格正文的解析结果不含表格统计",
+              not plain_an.get("table_stats", {}).get("total"),
+              str(plain_an.get("table_stats")))
+
+
+        # 办理清单的截止锚点：多轨道通知必须按轨道各给一条，而不是只挂一个日期。
+        # 只挂单值等于让学生照别人的日期办事——硕士生看到博士的 10-08 就会误判已过期。
+        from app.services import checklist as checklist_mod  # noqa: E402
+        tl_notice = {
+            "content": TL_TEXT,
+            "analysis": {
+                "actionable": True,
+                "deadline": "2026-10-08",
+                "deadline_kind": "办理截止",
+                "timeline": tl_an["timeline_nodes"],
+                "evidence": {"deadline": "10月8日（冬季）前，博士学位申请人预答辩截止"},
+                "materials": [],
+            },
+        }
+        tl_chk = checklist_mod.build(tl_notice)
+        dl_steps = [s for s in tl_chk["steps"] if s.get("source") == "deadline"]
+        check("多轨道通知的截止锚点按轨道分别给出",
+              len(dl_steps) >= 2, str([s.get("title") for s in dl_steps])[:220])
+        check("截止锚点标题写明轨道与适用身份",
+              all("轨道" in (s.get("detail") or "") or "适用身份" in (s.get("detail") or "")
+                  for s in dl_steps) if dl_steps else False,
+              str([s.get("detail") for s in dl_steps])[:220])
+        check("截止锚点日期覆盖两条轨道而非只有单值",
+              len({d for d in (s.get("title", "") for s in dl_steps)}) >= 2
+              and not all("2026-10-08" in (s.get("title") or "") for s in dl_steps),
+              str([s.get("title") for s in dl_steps])[:220])
+        # 无时间轴的通知退回单值锚点，不能因为新逻辑把老通知的锚点弄没了
+        plain_chk = checklist_mod.build({
+            "content": "请于2026年12月20日前提交报名表至学院办公室。",
+            "analysis": {"actionable": True, "deadline": "2026-12-20",
+                         "deadline_kind": "报名截止", "timeline": [],
+                         "evidence": {"deadline": "2026年12月20日"}, "materials": []},
+        })
+        plain_dl = [s for s in plain_chk["steps"] if s.get("source") == "deadline"]
+        check("无时间轴通知仍保留单值截止锚点",
+              len(plain_dl) == 1 and "2026-12-20" in (plain_dl[0].get("title") or ""),
+              str([s.get("title") for s in plain_dl])[:200])
 
         user2 = {"grade": "大二", "major": "信息管理与信息系统", "interests": ["竞赛"]}
         base_a = {"deadline": "2026-12-20", "target": ["本科生"], "conditions": [],
@@ -532,55 +847,70 @@ def main() -> int:
             base.update(fields)
             return base
 
+        # 语料里的日期一律相对"今天"生成。
+        # 曾经写死 2026-11-20 这类字面量，跑到 11-26 时全部变成过期，
+        # 「尚未截止」「按日期升序」三项断言就集体变红——不是代码坏了，
+        # 是测试自己在日历上过期。写死的日期等于给自检埋了一颗定时炸弹。
+        def _d(offset: int) -> str:
+            return (_dt.date.today() + _dt.timedelta(days=offset)).isoformat()
+
+        def _cn(iso: str) -> str:
+            y, m, dd = iso.split("-")
+            return "%d年%d月%d日" % (int(y), int(m), int(dd))
+
+        D_MATH, D_ICT = _d(5), _d(2)
+        D_ACM, D_SCHOLAR, D_POOR = _d(8), _d(3), _d(6)
+        D_RUN, D_TALK, D_PAST = _d(4), _d(4), _d(-500)
+
         qa_corpus = [
             _qa_item(1, "关于举办2026年武汉理工大学数学建模竞赛暨全国大学生数学建模竞赛校内选拔的通知",
-                     "学科竞赛", "2026-11-20",
-                     "各学院：关于举办2026年数学建模竞赛的通知。报名时间2026年11月3日至2026年11月20日，"
+                     "学科竞赛", D_MATH,
+                     "各学院：关于举办2026年数学建模竞赛的通知。报名时间%s至%s，"
                      "报名截止后不再受理。提交材料：报名表、个人简历、作品说明。面向全日制本科生，"
-                     "以3人团队形式报名，参赛队员须无违纪记录。",
+                     "以3人团队形式报名，参赛队员须无违纪记录。" % (_cn(_d(-12)), _cn(D_MATH)),
                      materials=["报名表", "个人简历", "作品说明"], target=["本科生"],
-                     conditions=["3人团队", "无违纪记录"], registration_start="2026-11-03",
+                     conditions=["3人团队", "无违纪记录"], registration_start=_d(-12),
                      evidence={"materials": "提交材料：报名表、个人简历、作品说明"}),
-            _qa_item(3, "关于组织参加第十一届华为ICT大赛创新赛的通知", "学科竞赛", "2026-11-15",
-                     "各学院：关于组织参加第十一届华为ICT大赛创新赛的通知，报名截止2026年11月15日，"
-                     "须以团队形式参赛并提交作品材料。",
+            _qa_item(3, "关于组织参加第十一届华为ICT大赛创新赛的通知", "学科竞赛", D_ICT,
+                     "各学院：关于组织参加第十一届华为ICT大赛创新赛的通知，报名截止%s，"
+                     "须以团队形式参赛并提交作品材料。" % _cn(D_ICT),
                      materials=["作品信息收集表", "作品介绍PPT"], target=["本科生", "硕士研究生"]),
-            _qa_item(4, "2026年ACM-ICPC程序设计竞赛校内选拔赛报名启动", "学科竞赛", "2026-11-25",
-                     "关于2026年ACM-ICPC程序设计竞赛校内选拔赛报名的通知，报名截止2026年11月25日。",
+            _qa_item(4, "2026年ACM-ICPC程序设计竞赛校内选拔赛报名启动", "学科竞赛", D_ACM,
+                     "关于2026年ACM-ICPC程序设计竞赛校内选拔赛报名的通知，报名截止%s。" % _cn(D_ACM),
                      target=["本科生"]),
-            _qa_item(5, "关于开展2025—2026学年国家奖学金评审工作的通知", "奖助学金", "2026-11-06",
-                     "关于开展国家奖学金评审工作的通知。申请条件：学习成绩排名专业前10%，无不及格科目，"
-                     "二年级以上。提交材料：申请审批表、成绩单、获奖证书。报名截止2026年11月6日。",
+            _qa_item(5, "关于开展2025—2026学年国家奖学金评审工作的通知", "奖助学金", D_SCHOLAR,
+                     "关于开展国家奖学金评审工作的通知。申请条件：学习成绩排名专业前10%%，无不及格科目，"
+                     "二年级以上。提交材料：申请审批表、成绩单、获奖证书。报名截止%s。" % _cn(D_SCHOLAR),
                      conditions=["专业前10%", "无不及格科目", "二年级以上"],
                      materials=["申请审批表", "成绩单", "获奖证书"],
                      target=["本科生", "大二"], grade_requirement=["本科生", "大二"]),
-            _qa_item(7, "关于评选2025—2026学年国家励志奖学金的通知", "奖助学金", "2026-11-12",
-                     "关于评选国家励志奖学金的通知。申请条件：家庭经济困难、专业前30%。"
-                     "提交材料：申请表、成绩单、家庭经济困难认定证明、个人总结。报送截止2026年11月12日。",
+            _qa_item(7, "关于评选2025—2026学年国家励志奖学金的通知", "奖助学金", D_POOR,
+                     "关于评选国家励志奖学金的通知。申请条件：家庭经济困难、专业前30%%。"
+                     "提交材料：申请表、成绩单、家庭经济困难认定证明、个人总结。报送截止%s。" % _cn(D_POOR),
                      conditions=["家庭经济困难", "专业前30%"],
                      materials=["申请表", "成绩单", "家庭经济困难认定证明", "个人总结"],
                      target=["本科生"], deadline_kind="报送截止"),
-            _qa_item(20, "关于举办2026年阳光体育冬季长跑比赛的通知", "校园活动", "2026-11-11",
-                     "关于举办阳光体育冬季长跑比赛的通知，报名截止2026年11月11日。"),
-            _qa_item(22, "华为技术有限公司2027届校园招聘宣讲会（武汉理工大学站）", "实习就业", "2026-11-11",
-                     "关于校园招聘宣讲会的通知，预约办理截止2026年11月11日。"),
-            _qa_item(99, "关于举办第五届武汉理工大学MPAcc案例大赛的通知", "学科竞赛", "2025-01-28",
-                     "关于举办MPAcc案例大赛的通知，报名截止2025年1月28日，已过期的历史通知。",
+            _qa_item(20, "关于举办2026年阳光体育冬季长跑比赛的通知", "校园活动", D_RUN,
+                     "关于举办阳光体育冬季长跑比赛的通知，报名截止%s。" % _cn(D_RUN)),
+            _qa_item(22, "华为技术有限公司2027届校园招聘宣讲会（武汉理工大学站）", "实习就业", D_TALK,
+                     "关于校园招聘宣讲会的通知，预约办理截止%s。" % _cn(D_TALK)),
+            _qa_item(99, "关于举办第五届武汉理工大学MPAcc案例大赛的通知", "学科竞赛", D_PAST,
+                     "关于举办MPAcc案例大赛的通知，报名截止%s，已过期的历史通知。" % _cn(D_PAST),
                      materials=["案例解决方案", "授权书"]),
         ]
 
         QA_EXPECT = {
             "有哪些学科竞赛可以报名？": {"must": ["尚未截止"],
-                                  "forbid": ["2025-01-28", "（已截止）"]},
+                                  "forbid": [D_PAST, "（已截止）"]},
             "数学建模竞赛需要提交哪些材料？": {"must": ["报名表", "个人简历", "作品说明"],
                                      "forbid": ["暂未找到"]},
             "国家奖学金的申请条件是什么？": {"must": ["专业前10%", "无不及格科目"],
                                     "forbid": ["国家励志奖学金"]},
-            "华为ICT大赛的报名截止时间？": {"must": ["2026-11-15"], "forbid": ["MPAcc"]},
+            "华为ICT大赛的报名截止时间？": {"must": [D_ICT], "forbid": ["MPAcc"]},
             # 不绑定具体日期字面量：固定日期会随时间过期，导致「近期截止」正确排除后断言反而变红。
             # 日期正确性由下方「近期截止按日期升序且排除过期」用当天日期动态断言，这里只校验答复口径。
             "近期有哪些通知即将截止？": {"must": ["由近到远", "尚未截止"],
-                                 "forbid": ["2025-01-28", "2026-11-06"]},
+                                 "forbid": [D_PAST]},
             "国家励志奖学金需要准备什么材料？": {"must": ["申请表", "家庭经济困难认定证明", "个人总结"],
                                       "forbid": ["暂未找到"]},
         }
@@ -687,6 +1017,40 @@ def main() -> int:
               h.get("platforms", {}).get("pwa") is True
               and "HarmonyOS" in h.get("platforms", {}).get("clients", []),
               str(h.get("platforms"))[:160])
+
+        # ---------------- 华为云可举证性：健康端点单点可见 ----------------
+        # 「代码已就绪」与「真实已连通」必须分开：默认离线自检环境里
+        # 三件套都没配，huawei.*.configured/active 必须如实为 false，
+        # 同时 fallback 段要说清降级到了什么，绝不能把降级包装成已连通。
+        hw = h.get("huawei", {})
+        check("健康检查单点亮出华为云三件套状态",
+              all(k in hw for k in ("rds", "dcs", "maas", "fallback")),
+              str(list(hw))[:160])
+        check("健康检查区分数据库已配置与真连通",
+              set(("configured", "active", "kind")) <= set(hw.get("rds", {}))
+              and hw["rds"]["active"] == (hw["rds"]["configured"] and h["database"]["ok"]),
+              str(hw.get("rds"))[:160])
+        check("离线自检环境如实标注华为云未连通且给出降级目标",
+              hw.get("rds", {}).get("active") is False
+              and hw.get("dcs", {}).get("active") is False
+              and hw.get("maas", {}).get("active") is False
+              and "SQLite" in hw.get("fallback", {}).get("database", "")
+              and "规则引擎" in hw.get("fallback", {}).get("engine", ""),
+              str(hw.get("fallback"))[:160])
+        check("健康检查下发缓存种类与活动引擎",
+              "cache" in h and "kind" in h.get("cache", {})
+              and h.get("active_engine") in ("llm", "rule"),
+              str((h.get("cache"), h.get("active_engine")))[:160])
+        check("配置层提供是否外接华为云的布尔判据",
+              app_settings.is_mysql is False and app_settings.is_redis is False
+              and app_settings.is_maas is False,
+              str((app_settings.is_mysql, app_settings.is_redis, app_settings.is_maas)))
+        check("模型地址默认指向华为云 MaaS OpenAI 兼容端点",
+              app_settings.LLM_BASE_URL == "https://api.modelarts-maas.com/v1",
+              app_settings.LLM_BASE_URL)
+        check("数据库种类随连接串切换为 MySQL 标签",
+              app_settings.db_kind == "SQLite（本地）",
+              app_settings.db_kind)
 
         s = c.get("/api/ai/status").json()
         check("AI 状态含冷却与能力清单",
@@ -844,6 +1208,402 @@ def main() -> int:
               and "--lan" in bat.read_text(encoding="utf-8")
               and "--lan" in sh.read_text(encoding="utf-8"),
               f"bat={bat.exists()} sh={sh.exists()}")
+
+        # ---------------- 多端接入：静态资源与页面骨架 ----------------
+        page = c.get("/")
+        check("多端接入与冲突治理视图已挂载",
+              'id="view-mobile"' in page.text and 'id="view-conflicts"' in page.text,
+              "首页缺少 view-mobile / view-conflicts")
+        check("多端导航入口存在",
+              'data-view="mobile"' in page.text and 'data-view="conflicts"' in page.text,
+              "侧栏缺少多端入口")
+        check("多端样式表已引入",
+              "/static/css/mobile.css" in page.text,
+              "缺少 mobile.css 引用")
+        mobile_css = c.get("/static/css/mobile.css")
+        check("多端样式表可访问",
+              mobile_css.status_code == 200 and ".conflict-card" in mobile_css.text,
+              f"{mobile_css.status_code}")
+        check("小程序图标资源已就绪",
+              (root_dir / "miniprogram" / "images" / "tab-home.png").exists()
+              and (root_dir / "miniprogram" / "images" / "tab-mine-active.png").exists(),
+              "tabBar 图标缺失")
+
+        # 订阅消息的跳转页面必须是小程序里真实存在的页面。
+        # 这类错误不会有任何报错：服务端照发、用户点开白屏，只能靠断言钉住。
+        mp_pages = set()
+        try:
+            mp_json = json.loads((root_dir / "miniprogram" / "app.json").read_text(encoding="utf-8"))
+            mp_pages = set(mp_json.get("pages") or [])
+        except Exception as exc:  # noqa: BLE001 - 自检要给出可读原因
+            mp_pages = set()
+            _mp_err = str(exc)
+        push_src = (root_dir / "app" / "routers" / "mobile.py").read_text(encoding="utf-8")
+        push_pages = set(re.findall(r'page=f?"(pages/[A-Za-z0-9_\-]+/[A-Za-z0-9_\-]+)', push_src))
+        check("订阅消息跳转页面在小程序页面清单内",
+              bool(push_pages) and push_pages <= mp_pages,
+              f"跳转页 {sorted(push_pages)} 不在 {sorted(mp_pages)} 内")
+
+        # ---------------- 多端接入：接口 ----------------
+        wstat = c.get("/api/wechat/status")
+        ws = wstat.json() if wstat.status_code == 200 else {}
+        check("多端状态含平台矩阵与能力清单",
+              wstat.status_code == 200
+              and ws.get("platforms", {}).get("miniprogram", {}).get("available") is True
+              and ws.get("platforms", {}).get("calendar", {}).get("available") is True
+              and any(x.get("key") == "checklist" for x in ws.get("capabilities") or []),
+              wstat.text[:200])
+        check("多端状态下发订阅模板标识",
+              "template_id" in ws and "mode_label" in ws,
+              str(list(ws))[:160])
+
+        login = c.post("/api/wechat/login", json={"device_key": "smoke-dev", "nickname": "自检同学"})
+        lj = login.json() if login.status_code == 200 else {}
+        tok = lj.get("token", "")
+        check("小程序游客登录可用",
+              login.status_code == 200 and bool(tok)
+              and lj.get("openid_mode") == "guest",
+              login.text[:200])
+        check("游客 openid 带 mock 前缀便于区分演示数据",
+              str(lj.get("openid", "")).startswith("mock_")
+              if lj.get("openid") else True,
+              str(lj)[:160])
+
+        # 同一 device_key 重登复用账号，但旧票据必须失效（避免多处登录互相踩）
+        relogin = c.post("/api/wechat/login", json={"device_key": "smoke-dev", "nickname": "自检同学"})
+        tok2 = relogin.json().get("token", "")
+        check("同设备重登复用账号并刷新票据",
+              relogin.json().get("user", {}).get("id") == lj.get("user", {}).get("id")
+              and tok2 != tok,
+              relogin.text[:160])
+        stale = c.get("/api/mobile/bootstrap", headers={"x-token": tok})
+        check("旧票据在重登后失效",
+              stale.status_code == 401,
+              str(stale.status_code))
+
+        hdr = {"x-token": tok2}
+        boot = c.get("/api/mobile/bootstrap", headers=hdr)
+        bj = boot.json() if boot.status_code == 200 else {}
+        check("首屏打包接口一次返回六个区块",
+              boot.status_code == 200
+              and all(k in bj for k in ("user", "stats", "agenda", "matched",
+                                        "push_ready", "server_time")),
+              boot.text[:200])
+        check("无票据访问首屏接口被拒",
+              c.get("/api/mobile/bootstrap").status_code == 401,
+              "应返回 401")
+        check("query token 通道可用（供 downloadFile 场景）",
+              c.get(f"/api/mobile/bootstrap?token={tok2}").status_code == 200,
+              "query 票据未生效")
+
+        # ---------------- 办理清单 ----------------
+        chk = c.get("/api/notices/1/checklist")
+        cj = chk.json() if chk.status_code == 200 else {}
+        check("办理清单接口返回步骤与统计",
+              chk.status_code == 200
+              and isinstance(cj.get("steps"), list)
+              and isinstance(cj.get("stats"), dict)
+              and "total" in cj.get("stats", {}),
+              chk.text[:200])
+        steps = cj.get("steps") or []
+        check("办理清单不把联系方式误判为步骤",
+              not any("联系电话" in (s.get("title") or "") or "联系人" in (s.get("title") or "")
+                      for s in steps),
+              str([s.get("title") for s in steps])[:200])
+        check("办理清单步骤均带序号与渠道标记",
+              all(isinstance(s.get("seq"), int) and "offline" in s for s in steps) if steps else True,
+              str(steps[:2])[:200])
+        # source 区分「原文里的动作句」与「系统补的时间锚点」，
+        # 界面靠它标注「这句原文没有」，缺了就会把系统补的话冒充成原文。
+        check("办理清单步骤标注来源类型",
+              all(s.get("source") in ("text", "material", "deadline") for s in steps) if steps else True,
+              str([s.get("source") for s in steps])[:200])
+        check("办理清单截止锚点标记为 deadline 来源",
+              any(s.get("source") == "deadline" and "前完成提交" in (s.get("title") or "")
+                  for s in steps) if steps else True,
+              str([s.get("title") for s in steps])[:200])
+
+        # ---------------- 截止时间轴（端点） ----------------
+        tl_notice_payload = {
+            "title": "关于2026年秋冬季博士、硕士学位授予工作安排的通知",
+            "content": TL_TEXT, "publish_time": "2026-06-15",
+            "source_name": "研究生院学位办公室",
+        }
+        tl_new = c.post("/api/notices", json=tl_notice_payload)
+        tl_nid = tl_new.json().get("id") if tl_new.status_code in (200, 201) else 0
+        if tl_nid:
+            c.post(f"/api/notices/{tl_nid}/analyze")
+            tn = c.get(f"/api/notices/{tl_nid}/timeline")
+            tnj = tn.json() if tn.status_code == 200 else {}
+            check("单条通知时间轴端点返回多轨道节点",
+                  tn.status_code == 200
+                  and len(tnj.get("nodes") or []) >= 6
+                  and len(tnj.get("tracks") or []) >= 2,
+                  tn.text[:200])
+            t_ms = c.get(f"/api/notices/{tl_nid}/timeline?role=硕士研究生&track=秋季")
+            msj = t_ms.json() if t_ms.status_code == 200 else {}
+            ms_nodes = msj.get("nodes") or []
+            check("时间轴端点按身份与轨道双重过滤",
+                  bool(ms_nodes)
+                  and all(n.get("role") == "硕士研究生" and n.get("track") == "秋季"
+                          for n in ms_nodes),
+                  t_ms.text[:200])
+            # 单值截止与个人时间轴不能给出同一个答案，这正是新能力的存在理由
+            check("时间轴端点的硕士视图不含单值截止那个日期",
+                  bool(ms_nodes)
+                  and all(n.get("date") != msj.get("deadline") for n in ms_nodes),
+                  f"deadline={msj.get('deadline')} dates={[n.get('date') for n in ms_nodes]}")
+
+        # Web 端没有票据体系，登录是本地选角色，所以必须支持 user_id 直传
+        web_u = c.post("/api/users", json={"name": "时间轴自检同学", "grade": "博二",
+                                           "major": "材料科学与工程"})
+        web_uid = web_u.json().get("id") if web_u.status_code in (200, 201) else 0
+        if web_uid:
+            mt = c.get(f"/api/timeline?user_id={web_uid}&back=730")
+            mtj = mt.json() if mt.status_code == 200 else {}
+            check("个人时间轴支持 Web 端按 user_id 直取",
+                  mt.status_code == 200 and mtj.get("role") == "博士研究生",
+                  mt.text[:200])
+            check("个人时间轴只含学生侧节点",
+                  all(it.get("role") != "学院" for it in mtj.get("items") or []),
+                  str([it.get("role") for it in mtj.get("items") or []])[:200])
+            check("个人时间轴带回看窗口参数",
+                  mtj.get("back") == 730 and "grade" in mtj,
+                  str({k: mtj.get(k) for k in ("back", "grade", "count")}))
+            check("无票据且无 user_id 的个人时间轴被拒",
+                  c.get("/api/timeline").status_code == 401,
+                  "应返回 401")
+
+        # ---------------- 表格结构（端点） ----------------
+        # 表格通知走完整链路：采集（保留列分隔符）→ 解析（补位 + C11）→ 详情接口。
+        # 详情里的 table_stats / table_detail 是即时从正文算出来的，不落库。
+        _TB_HTML = """<div class="content">
+<p>一、少数民族高层次骨干人才计划，面向博士研究生（专项计划）。</p>
+<table><tr><th>学院名称</th><th>专业代码</th><th>专业名称</th><th>拟招生计划</th><th>咨询电话</th></tr>
+<tr><td>材料科学与工程学院</td><td>085600</td><td>材料与化工</td><td>1</td><td>027-87164677</td></tr>
+<tr><td>机电工程学院</td><td>080200</td><td>机械工程</td><td>1</td><td>027-87218976</td></tr>
+</table>
+<p>报名截止时间：2026年6月12日前</p></div>"""
+        from app.services import collector as _collector  # noqa: E402
+        _tb_content = _collector.parse_detail(_TB_HTML, "http://x/tb.shtml")["content"]
+        _tb_created = c.post("/api/notices", json={
+            "title": "关于我校2026年部分博士研究生（专项计划）补充报名的通知",
+            "content": _tb_content, "publish_time": "2026-06-09"})
+        _tb_id = (_tb_created.json() or {}).get("id") if _tb_created.status_code == 200 else None
+        check("表格通知可入库并解析",
+              _tb_created.status_code == 200
+              and c.post(f"/api/notices/{_tb_id}/analyze").status_code == 200,
+              _tb_created.text[:200])
+        _tb_detail = c.get(f"/api/notices/{_tb_id}")
+        _tb_an = (_tb_detail.json() or {}).get("analysis") or {}
+        check("通知详情返回表格结构与列语义",
+              _tb_detail.status_code == 200
+              and (_tb_an.get("table_stats") or {}).get("total") == 1
+              and (_tb_an.get("table_detail") or [{}])[0].get("kinds", [""])[0] == "college",
+              str(_tb_an.get("table_stats")))
+        check("通知详情保留正文里的列分隔符",
+              "\x1f" in (_tb_detail.json() or {}).get("content", ""),
+              repr((_tb_detail.json() or {}).get("content", "")[:120]))
+        check("表格通知经接口解析后受众正确",
+              _tb_an.get("target") == ["博士研究生"], str(_tb_an.get("target")))
+        check("表格通知的学院由接口响应带回",
+              "材料科学与工程学院" in (_tb_an.get("major_requirement") or []),
+              str(_tb_an.get("major_requirement"))[:160])
+
+        # 存量正文（旧版采集器压平、无列分隔符）走接口时，必须明确标出
+        # 「需要重新采集」，否则界面无法区分「本来没表格」与「结构被扔了」。
+        _stale_created = c.post("/api/notices", json={
+            "title": "关于2026年部分博士研究生（专项计划）补充报名的通知（旧采）",
+            "content": ("学院名称专业代码专业名称\n"
+                        "拟招生计划咨询电话材料科学与工程学院\n"
+                        "085600材料与化工1027-87164677"),
+            "publish_time": "2026-06-09"})
+        _stale_id = ((_stale_created.json() or {}).get("id")
+                     if _stale_created.status_code == 200 else None)
+        if _stale_id:
+            c.post(f"/api/notices/{_stale_id}/analyze")
+        _stale_an = ((c.get(f"/api/notices/{_stale_id}").json() or {}).get("analysis")
+                     or {} if _stale_id else {})
+        check("存量压平正文在接口层标记为需重新采集",
+              _stale_an.get("table_needs_recollect") is True
+              and (_stale_an.get("table_stats") or {}).get("total") == 0
+              and "重新采集" in (_stale_an.get("table_note") or ""),
+              str({k: _stale_an.get(k) for k in
+                   ("table_needs_recollect", "table_note")}))
+
+        # ---------------- 冲突治理 ----------------
+        scan = c.post("/api/conflicts/scan")
+        sj = scan.json() if scan.status_code == 200 else {}
+        check("冲突扫描返回扫描数与命中数",
+              scan.status_code == 200
+              and isinstance(sj.get("scanned"), int)
+              and isinstance(sj.get("found"), int),
+              scan.text[:200])
+
+        twin = c.post("/api/notices", json={
+            "title": "关于2026年度奖学金评审的通知",
+            "content": "请于2026年12月10日前提交申请材料至学生处。联系人：王老师。",
+            "source_url": "https://x.example.edu.cn/a.html",
+            "source_name": "学生处", "publish_time": "2026-11-01"})
+        twin_id = twin.json().get("id") if twin.status_code in (200, 201) else 0
+        twin2 = c.post("/api/notices", json={
+            "title": "关于2026年度奖学金评审的通知",
+            "content": "请于2026年12月18日前提交申请材料至学生处。联系人：王老师。",
+            "source_url": "https://x.example.edu.cn/b.html",
+            "source_name": "学生处", "publish_time": "2026-11-02"})
+        twin2_id = twin2.json().get("id") if twin2.status_code in (200, 201) else 0
+        if twin_id and twin2_id:
+            c.post(f"/api/notices/{twin_id}/analyze")
+            c.post(f"/api/notices/{twin2_id}/analyze")
+            rescan = c.post("/api/conflicts/scan").json()
+            check("同标题不同截止被识别为冲突",
+                  rescan.get("found", 0) >= 1,
+                  str(rescan))
+            clist = c.get("/api/conflicts").json()
+            check("冲突列表含严重度与字段标签",
+                  bool(clist.get("items"))
+                  and all("severity" in i and "field_label" in i for i in clist["items"]),
+                  str(clist.get("items", [])[:1])[:240])
+            check("冲突汇总按严重度分组",
+                  isinstance(clist.get("summary", {}).get("by_severity"), dict)
+                  and "unresolved" in clist.get("summary", {}),
+                  str(clist.get("summary"))[:200])
+            cid = clist["items"][0]["id"]
+            bad = c.patch(f"/api/conflicts/{cid}", json={"resolution": "不存在的裁决"})
+            check("非法裁决值被拒绝",
+                  bad.status_code in (400, 422),
+                  str(bad.status_code))
+            good = c.patch(f"/api/conflicts/{cid}", json={"resolution": "use_a"})
+            check("冲突可被人工裁决",
+                  good.status_code == 200 and good.json().get("resolved") is True,
+                  good.text[:200])
+        else:
+            check("同标题不同截止被识别为冲突", False, "造数失败")
+            check("冲突列表含严重度与字段标签", False, "造数失败")
+            check("冲突汇总按严重度分组", False, "造数失败")
+            check("非法裁决值被拒绝", False, "造数失败")
+            check("冲突可被人工裁决", False, "造数失败")
+
+        # ---------------- 日历订阅 ----------------
+        ics = c.get("/api/calendar.ics")
+        body = ics.text if ics.status_code == 200 else ""
+        check("日历订阅返回合法 ICS",
+              ics.status_code == 200
+              and "BEGIN:VCALENDAR" in body
+              and "BEGIN:VEVENT" in body,
+              f"{ics.status_code} len={len(body)}")
+        longest = max((len(x.encode("utf-8")) for x in body.split("\r\n")), default=0)
+        check("ICS 折行不超过 75 字节且不吞内容",
+              longest <= 75 and "SUMMARY" in body,
+              f"最长行 {longest} 字节")
+        check("日历订阅带提醒闹钟",
+              "BEGIN:VALARM" in body and "TRIGGER" in body,
+              "缺少 VALARM")
+
+    # ---- 冲突配对的判别力（真实数据上误报过一次，靠下面这组用例钉住）
+    from app.services import conflict as conflict_mod
+
+    # 同源多发必须能配上：标题一致 / 转发前缀 / 同一赛事不同轮次
+    for a, b in (
+        ("关于组织2026年大学生创新创业训练计划项目申报的通知",
+         "关于组织2026年大学生创新创业训练计划项目申报的通知"),
+        ("关于举办2026年研究生学术论坛的通知",
+         "转发研究生院关于举办2026年研究生学术论坛的通知"),
+        ("关于举办2026年校园歌手大赛的通知",
+         "关于举办2026年校园歌手大赛决赛的通知"),
+    ):
+        check(f"冲突配对放行：{a[3:15]}",
+              not conflict_mod._qualifier_conflict(a, b),
+              f"被误判为互斥：{a} / {b}")
+    check("转发标题被包含时不受相似度阈值限制",
+          conflict_mod._contains("关于举办2026年研究生学术论坛的通知",
+                                 "转发研究生院关于举办2026年研究生学术论坛的通知"),
+          "长标题包含短标题未识别为同源")
+
+    # 形似而不同的事项必须拆开：不同奖项 / 不同阶段 / 不同周期
+    for a, b, why in (
+        ("关于开展2025—2026学年国家奖学金评审工作的通知",
+         "关于评选2025—2026学年国家励志奖学金的通知", "两个独立奖项"),
+        ("关于开展2026年国家级大学生创新创业训练计划项目结题验收的通知",
+         "关于组织2026年大学生创新创业训练计划项目申报的通知", "项目不同阶段"),
+        ("关于2026年暑期社会实践立项的通知",
+         "关于2026年暑期社会实践结项的通知", "立项与结项"),
+        ("关于2025年秋季学期助管招聘的通知",
+         "关于2026年春季学期助管招聘的通知", "不同学年学期"),
+    ):
+        check(f"冲突配对拦截：{why}",
+              conflict_mod._qualifier_conflict(a, b),
+              f"未被识别为不同事项：{a} / {b}")
+
+    # 联系方式在分析结果里是数组，展示时必须压平，否则界面上是 "['027-…']"
+    flat = conflict_mod._flat(["027-87850001", "027-87850066"])
+    check("冲突字段值把数组压成中文顿号串", flat == "027-87850001、027-87850066", repr(flat))
+    check("冲突字段值为空时返回空串", conflict_mod._flat(None) == "" and conflict_mod._flat([]) == "")
+
+    # 渠道措辞一字不差、只有内嵌日期不同时，不该再报一条「报名渠道不一致」
+    same_channel_a = "请通过校团委志愿服务系统在线报名，报名截止时间为2026年12月1日"
+    same_channel_b = "请通过校团委志愿服务系统在线报名，报名截止时间为2026年11月30日"
+    check("报名方式比对前抹掉内嵌日期",
+          conflict_mod._strip_dates(same_channel_a) == conflict_mod._strip_dates(same_channel_b),
+          f"{conflict_mod._strip_dates(same_channel_a)!r} vs {conflict_mod._strip_dates(same_channel_b)!r}")
+    check("报名渠道真的不同时仍保留差异",
+          conflict_mod._strip_dates("请将纸质材料交至东院行政楼302")
+          != conflict_mod._strip_dates("请通过线上系统提交电子版"))
+    check("冲突字段标签覆盖联系方式子字段",
+          conflict_mod.FIELD_LABELS.get("contact.phone") == "联系电话"
+          and conflict_mod.FIELD_LABELS.get("contact.email") == "联系邮箱")
+
+    # 地点抽取：公文里「地点为X」「小标题换行取下一行」两种写法都要吃得下
+    # 注意：循环变量不能叫 text，否则会遮蔽 main() 里 sqlalchemy 的 text() 导入
+    from app.services import fields as fields_mod
+
+    for loc_src, expect, variant in (
+        ("论坛于2026年12月5日举行，地点为东院行政楼302会议室。", "东院行政楼302会议室", "地点为式"),
+        ("二、活动地点\n南湖校区大学生活动中心一层大厅。", "南湖校区大学生活动中心一层大厅", "小标题换行"),
+        ("活动地点为余家头校区校医院门前广场。", "余家头校区校医院门前广场", "活动地点为"),
+        ("地点：东院行政楼302会议室", "东院行政楼302会议室", "冒号式"),
+    ):
+        got, _ = fields_mod.extract_location(loc_src)
+        # 断言名必须唯一（收尾处有 Counter 查重），所以标签里带上写法差异
+        check(f"地点抽取（{expect[0]}/{expect[-2:]}）：{variant}",
+              got == expect, f"得到 {got!r}，期望 {expect!r}")
+    check("地点抽取不把线上渠道当地点",
+          fields_mod.extract_location("报名地点：网上办事大厅")[0] == "",
+          "把线上渠道误当地理地点")
+
+    # ---------------- CodeArts 实操留痕：真实内容而非空模板 ----------------
+    # 留痕目录位于作品工程之外（与工程同级的「11_CodeArts使用记录/」），
+    # 向上逐级查找而不是写死 ROOT.parent.parent：变异审计会把工程单独复制到
+    # 临时目录，此时外部留痕不在副本里，这几条「证据体检」应跳过而非判失败——
+    # 它们检查的是工程外的实证文件，不属于 11 组业务缺陷的检出对象。
+    submit = next((p / "11_CodeArts使用记录" for p in (ROOT, *ROOT.parents)
+                   if (p / "11_CodeArts使用记录").is_dir()), None)
+    if submit is not None:
+        log_path = submit / "09_开发日志.md"
+        log_text = log_path.read_text(encoding="utf-8") if log_path.exists() else ""
+        check("开发日志已脱离空模板且有真实日期台账",
+              "模板 · 待填写" not in log_text
+              and "2026-11-23" in log_text and "2026-11-25" in log_text
+              and "| 日期 |" in log_text,
+              f"日志状态异常：{log_text[:80]!r}")
+        debug_path = submit / "08_排错记录.md"
+        debug_text = debug_path.read_text(encoding="utf-8") if debug_path.exists() else ""
+        check("排错记录含真实失败与回归闭环",
+              "ssh_wait" in debug_text and "300 seconds" in debug_text
+              and "SSH_AUTH_OK" in debug_text and "status: recovered" in debug_text,
+              "排错记录缺少真实失败/修复/回归证据")
+        adopt_path = submit / "07_采纳说明.md"
+        adopt_text = adopt_path.read_text(encoding="utf-8") if adopt_path.exists() else ""
+        check("采纳说明已脱离空模板且有未采纳建议与真实证据",
+              "模板 · 待填写" not in adopt_text
+              and "未采纳" in adopt_text and "ssh_backup" in adopt_text
+              and "非客户端导出" in adopt_text and "| 日期 |" in adopt_text,
+              f"采纳说明状态异常：{adopt_text[:80]!r}")
+        deploy_shots = list((submit / "05_云资源与部署").glob("*.png"))
+        check("云资源与部署归档了真实公网截图",
+              len(deploy_shots) >= 3
+              and any("公网首页" in p.name for p in deploy_shots),
+              f"归档截图：{[p.name for p in deploy_shots]}")
 
     # 断言名唯一性必须在收尾处判断：开头时 CHECK_NAMES 还是空的，会恒真。
     dup = [n for n, c in Counter(CHECK_NAMES).items() if c > 1]

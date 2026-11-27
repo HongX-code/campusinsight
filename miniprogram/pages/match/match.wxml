@@ -1,0 +1,72 @@
+<!-- 匹配：三级结论筛选 + 判断依据 -->
+<view class="container">
+
+  <!-- 画像缺失提示 -->
+  <view wx:if="{{profileMissing && !loading}}" class="profile-tip" bindtap="goMine">
+    <view class="profile-tip-title">先补全专业与年级</view>
+    <view class="profile-tip-sub">补齐后系统才能判断「你符不符合报名条件」</view>
+  </view>
+
+  <!-- 三级筛选 -->
+  <view class="level-tabs">
+    <view class="level-tab {{level === '' ? 'level-tab-on' : ''}}" data-value="" bindtap="pickLevel">
+      全部 <text class="level-num">{{counts.match + counts.maybe + counts.no}}</text>
+    </view>
+    <view class="level-tab {{level === 'match' ? 'level-tab-on' : ''}}" data-value="match" bindtap="pickLevel">
+      符合 <text class="level-num">{{counts.match}}</text>
+    </view>
+    <view class="level-tab {{level === 'maybe' ? 'level-tab-on' : ''}}" data-value="maybe" bindtap="pickLevel">
+      待核对 <text class="level-num">{{counts.maybe}}</text>
+    </view>
+    <view class="level-tab {{level === 'no' ? 'level-tab-on' : ''}}" data-value="no" bindtap="pickLevel">
+      不符合 <text class="level-num">{{counts.no}}</text>
+    </view>
+  </view>
+
+  <view class="filter-row">
+    <view class="switch-item" bindtap="toggleOpen">
+      <view class="switch-box {{onlyOpen ? 'switch-on' : ''}}">
+        <view class="switch-dot"></view>
+      </view>
+      <text class="switch-label">只看未截止</text>
+    </view>
+    <text class="filter-hint">分数为规则加权匹配度，非录取概率</text>
+  </view>
+
+  <view wx:if="{{loading}}" class="loading">正在计算匹配…</view>
+
+  <view wx:elif="{{error}}" class="empty">
+    {{error}}
+    <view class="btn btn-ghost retry-btn" bindtap="retry">重试</view>
+  </view>
+
+  <view wx:elif="{{items.length === 0}}" class="empty">
+    当前筛选下没有通知
+  </view>
+
+  <block wx:else>
+    <view
+      wx:for="{{items}}"
+      wx:key="noticeId"
+      class="card card-tap level-card level-{{item.level}}"
+      data-id="{{item.noticeId}}"
+      bindtap="openNotice"
+    >
+      <view class="row-between">
+        <view class="grow card-title ellipsis-2">{{item.title}}</view>
+        <view class="badge badge-{{item.level}}">{{item.levelText}}</view>
+      </view>
+
+      <view class="meta-row">
+        <text class="tag">{{item.category}}</text>
+        <text class="tag tag-gray">{{item.score}} 分</text>
+      </view>
+
+      <view wx:if="{{item.reasons.length > 0}}" class="reasons">
+        <view wx:for="{{item.reasons}}" wx:for-item="r" wx:key="*this" class="reason-line">
+          <text class="reason-dot">·</text>{{r}}
+        </view>
+      </view>
+    </view>
+  </block>
+</view>

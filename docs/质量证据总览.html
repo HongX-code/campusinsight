@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>高校智讯 · 质量证据总览</title>
+<style>
+:root{--bg:#F6F8FC;--card:#FFFFFF;--line:#E6EAF2;--ink:#1B2434;--muted:#6B7688;
+--blue:#2563EB;--violet:#7C3AED;--green:#0F9D6E;--amber:#B45309;}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);
+ font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;
+ line-height:1.65;-webkit-font-smoothing:antialiased}
+.wrap{max-width:1080px;margin:0 auto;padding:48px 28px 72px}
+header{display:flex;justify-content:space-between;align-items:flex-start;gap:24px;
+ padding-bottom:26px;border-bottom:1px solid var(--line);margin-bottom:34px}
+h1{font-size:27px;letter-spacing:-.4px;margin:0 0 8px;font-weight:650}
+.sub{color:var(--muted);font-size:14px;margin:0}
+.stamp{text-align:right;font-size:12px;color:var(--muted);white-space:nowrap;line-height:1.9}
+.tag{display:inline-block;background:#EEF3FF;color:var(--blue);border-radius:6px;
+ padding:2px 9px;font-size:12px;font-weight:600;margin-bottom:6px}
+h2{font-size:17px;margin:38px 0 16px;font-weight:650;letter-spacing:-.2px}
+h2 .idx{color:var(--muted);font-weight:400;font-size:13px;margin-right:9px}
+.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;
+ padding:18px 20px;position:relative}
+.card-label{font-size:12px;color:var(--muted);letter-spacing:.3px}
+.card-value{font-size:31px;font-weight:660;letter-spacing:-1px;margin:6px 0 2px;color:var(--blue)}
+.card:nth-child(2) .card-value{color:var(--violet)}
+.card-note{font-size:12px;color:var(--muted)}
+.card-id{position:absolute;right:16px;top:16px;font-size:11px;color:#A6AFBF;
+ font-family:ui-monospace,Consolas,monospace}
+.panel{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:4px 20px 18px}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{text-align:left;font-weight:600;color:var(--muted);font-size:12px;
+ padding:14px 10px 10px;border-bottom:1px solid var(--line)}
+td{padding:11px 10px;border-bottom:1px solid #F0F3F8;vertical-align:top}
+tr:last-child td{border-bottom:none}
+.mono{font-family:ui-monospace,Consolas,"SF Mono",monospace}
+.small{font-size:11.5px;color:#586577;word-break:break-all}
+.badge{display:inline-block;padding:1px 8px;border-radius:5px;font-size:11px;font-weight:600}
+.badge.ok{background:#E8F7F1;color:var(--green)}
+.badge.warn{background:#FEF3E2;color:var(--amber)}
+.lv{font-size:11px;color:var(--violet);background:#F3EEFF;padding:2px 7px;border-radius:5px}
+.scale{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+.scale div{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:13px 15px}
+.scale b{display:block;font-size:19px;letter-spacing:-.4px}
+.scale span{font-size:11.5px;color:var(--muted)}
+.note{background:#F0F4FF;border-left:3px solid var(--blue);border-radius:0 8px 8px 0;
+ padding:14px 18px;font-size:13px;color:#33415C;margin-top:16px}
+.bound{background:#FFFAF2;border:1px solid #F4E3C7;border-radius:12px;padding:16px 22px}
+.bound ul{margin:8px 0 0;padding-left:20px;font-size:13px;color:#6B542F}
+.bound li{margin:5px 0}
+footer{margin-top:40px;padding-top:18px;border-top:1px solid var(--line);
+ font-size:12px;color:var(--muted);display:flex;justify-content:space-between;gap:16px}
+code{background:#F1F4FA;padding:1px 5px;border-radius:4px;font-size:12px}
+@media(max-width:760px){.grid{grid-template-columns:repeat(2,1fr)}.scale{grid-template-columns:repeat(2,1fr)}
+ header{flex-direction:column}.stamp{text-align:left}.wrap{padding:28px 16px 48px}
+ .panel{overflow-x:auto}table{min-width:620px}}
+@media print{body{background:#fff}.wrap{max-width:none;padding:18px}
+ .card,.panel,.scale div{break-inside:avoid}footer{margin-top:20px}}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header>
+ <div>
+  <span class="tag">现场采集 · 可复现</span>
+  <h1>高校智讯 · 质量证据总览</h1>
+  <p class="sub">CampusInsight　|　每个数字来自本次执行的命令与退出码，不引用历史结论</p>
+ </div>
+ <div class="stamp">生成时间 2026-11-27 11:10:14<br>Python 3.12　·　数据源 docs/metrics.json<br>
+  一条命令复现：<code>python scripts/evidence.py --collect</code></div>
+</header>
+
+<h2><span class="idx">01</span>验证概览</h2>
+<div class="grid"><div class="card"><div class="card-label">端到端自检</div><div class="card-value">259</div><div class="card-note">项通过 · 0 失败</div><div class="card-id">E1</div></div>
+<div class="card"><div class="card-label">变异检出率</div><div class="card-value">11/11</div><div class="card-note">组缺陷全部变红</div><div class="card-id">E2</div></div>
+<div class="card"><div class="card-label">构建门禁</div><div class="card-value">9/9</div><div class="card-note">阶段 · 失败即停</div><div class="card-id">E3</div></div>
+<div class="card"><div class="card-label">交付件体检</div><div class="card-value">44</div><div class="card-note">项 · 失败 0 · 跳过 0</div><div class="card-id">E4</div></div>
+<div class="card"><div class="card-label">提示词一致</div><div class="card-value">11</div><div class="card-note">份逐字一致</div><div class="card-id">E5</div></div>
+<div class="card"><div class="card-label">HTTP 端点</div><div class="card-value">8/8</div><div class="card-note">返回 200</div><div class="card-id">E9</div></div></div>
+<div class="note"><b>为什么单列「变异检出率」：</b>「N 项自检全通过」只能说明断言没报错，
+不能说明断言有效。我们在临时副本注入 11 组真实业务缺陷，每组都必须让自检变红，
+本次 11/11 全部检出，上面其余数字才有意义。主工程全程只读。</div>
+
+<h2><span class="idx">02</span>证据清单</h2>
+<div class="panel"><table>
+<thead><tr><th>编号</th><th>证据</th><th>复现命令</th><th>退出码</th><th>关键结果</th><th>层级</th></tr></thead>
+<tbody><tr><td class="mono">E1</td><td>端到端业务自检</td><td class="mono small">python tests/test_smoke.py</td><td class="mono"><span class="badge ok">0</span></td><td>259 项通过 / 0 失败</td><td><span class="lv">L1</span></td></tr>
+<tr><td class="mono">E2</td><td>自检变异检出率</td><td class="mono small">python scripts/mutation_audit.py --json</td><td class="mono"><span class="badge ok">0</span></td><td>11/11 组缺陷被检出</td><td><span class="lv">L3</span></td></tr>
+<tr><td class="mono">E3</td><td>构建与质量门禁</td><td class="mono small">python scripts/ci_gate.py</td><td class="mono"><span class="badge ok">0</span></td><td>9/9 阶段</td><td><span class="lv">L1</span></td></tr>
+<tr><td class="mono">E4</td><td>交付件口径体检</td><td class="mono small">python scripts/codearts_tools.py verify --strict</td><td class="mono"><span class="badge ok">0</span></td><td>44 项 / 失败 0 / 跳过 0</td><td><span class="lv">L2</span></td></tr>
+<tr><td class="mono">E5</td><td>提示词单一数据源</td><td class="mono small">python scripts/codearts_tools.py split --check</td><td class="mono"><span class="badge ok">0</span></td><td>11 份逐字一致</td><td><span class="lv">L2</span></td></tr>
+<tr><td class="mono">E6</td><td>提交骨架完整性</td><td class="mono small">python scripts/codearts_tools.py bootstrap --check</td><td class="mono"><span class="badge ok">0</span></td><td>18 个文件齐全</td><td><span class="lv">L2</span></td></tr>
+<tr><td class="mono">E7</td><td>实测指标回灌</td><td class="mono small">python scripts/sync_metrics.py</td><td class="mono"><span class="badge ok">0</span></td><td>共同步 14 处</td><td><span class="lv">L2</span></td></tr>
+<tr><td class="mono">E8</td><td>启动前环境体检</td><td class="mono small">python run.py --check</td><td class="mono"><span class="badge ok">0</span></td><td>通过</td><td><span class="lv">L1</span></td></tr>
+<tr><td class="mono">E9</td><td>本地 HTTP 端点巡检</td><td class="mono small">python run.py 后逐路径 HTTP GET</td><td class="mono"><span class="badge ok">0</span></td><td>8/8 返回 200</td><td><span class="lv">L1</span></td></tr></tbody></table></div>
+<div class="note"><b>三层证据：</b>L1 可复现（命令 + 退出码）　·　L2 可追溯（产出与提示词 / 数据源一一对上）　·　
+L3 可核验（用反向缺陷验证检查本身没失效）。</div>
+
+<h2><span class="idx">03</span>变异明细</h2>
+<div class="panel"><table>
+<thead><tr><th>编号</th><th>注入的业务缺陷</th><th>自检是否变红</th><th>触发的断言</th></tr></thead>
+<tbody><tr><td class="mono">M1</td><td>日期容错放宽（脏日期重新流入）</td><td><span class="badge ok">检出</span></td><td class="small">日期工具：非法字符串安全返回 None </td></tr>
+<tr><td class="mono">M2</td><td>规则校验恒通过（C1—C11 形同虚设）</td><td><span class="badge ok">检出</span></td><td class="small">规则校验拦截『截止早于发布』 [&#x27;截止日期 2026-01-01 早于发布时间 2026-11-06&#x27;,</td></tr>
+<tr><td class="mono">M3</td><td>硬条件冲突不再判暂不符合</td><td><span class="badge ok">检出</span></td><td class="small">研究生对本科生限定通知判为暂不符合 match</td></tr>
+<tr><td class="mono">M4</td><td>删除通知不清理个人待办</td><td><span class="badge ok">检出</span></td><td class="small">删除通知后无僵尸待办 [{&#x27;id&#x27;: 2, &#x27;user_id&#x27;: 1, &#x27;notice_id&#x27;: 5, </td></tr>
+<tr><td class="mono">M5</td><td>问答 top_k 不透传</td><td><span class="badge ok">检出</span></td><td class="small">问答 top_k 参数生效 top_k=1 -&gt; 3 / top_k=3 -&gt; 3</td></tr>
+<tr><td class="mono">M6</td><td>人工修正不再校验日期格式</td><td><span class="badge ok">检出</span></td><td class="small">人工修正拒绝非法日期 2026-11-13x {&quot;id&quot;:5,&quot;title&quot;:&quot;关于2027届校园招聘宣</td></tr>
+<tr><td class="mono">M7</td><td>新闻稿可加入待办 / 进入匹配</td><td><span class="badge ok">检出</span></td><td class="small">新闻稿不出现在个性化匹配里 {&quot;user&quot;:{&quot;id&quot;:1,&quot;name&quot;:&quot;测试研究生&quot;,&quot;grade&quot;</td></tr>
+<tr><td class="mono">M8</td><td>检索结果不再按 top_k 截断</td><td><span class="badge ok">检出</span></td><td class="small">检索按 top_k 截断（单元探针） top_k=1 -&gt; 5 / top_k=3 -&gt; 5</td></tr>
+<tr><td class="mono">M9</td><td>去重指纹失效（正文不参与）</td><td><span class="badge ok">检出</span></td><td class="small">同标题不同正文不算重复（正文参与指纹） {&quot;detail&quot;:&quot;该通知已存在（编号 1），无需重复录入&quot;}</td></tr>
+<tr><td class="mono">M10</td><td>自检 check() 恒真化</td><td><span class="badge ok">检出</span></td><td class="small">[FATAL] 自检框架异常：check() 未正确判失败（自检恒真化）</td></tr>
+<tr><td class="mono">M11</td><td>断言名重复导致项数虚高</td><td><span class="badge ok">检出</span></td><td class="small">[FATAL] 断言名重复（项数不可信）：同标题不同正文不算重复（正文参与指纹）</td></tr></tbody></table></div>
+
+<h2><span class="idx">04</span>工程规模（现场统计）</h2>
+<div class="scale">
+ <div><b>20982</b><span>源码合计行数</span></div>
+ <div><b>16353</b><span>Python（app / scripts / tests）</span></div>
+ <div><b>4629</b><span>前端（HTML 633 / JS 2298 / CSS 1698）</span></div>
+ <div><b>49</b><span>路由端点</span></div>
+ <div><b>21 + 1</b><span>Markdown 文档（docs + README）</span></div>
+ <div><b>24</b><span>界面截图 / 9 个视图</span></div>
+</div>
+<div class="note">材料中的「约 N 行」为上述精确值按百位取整的概数；精确值、自检项数与端点数由
+<code>scripts/scale_sync.py</code> 从 <code>docs/metrics.json</code> 自动回灌，避免人工同步漂移。</div>
+
+<h2><span class="idx">05</span>未覆盖边界（不计入已验证）</h2>
+<div class="bound"><b style="font-size:13px">以下事项保持「待补齐」，不包装成已完成</b>
+<ul><li>华为云 RDS for MySQL / DCS for Redis / MaaS 的真实开通与连通（当前仅 ECS/EIP/VPC 已部署，运行态为 SQLite + 规则引擎；Terraform 定义与代码适配已就绪但实测待补）</li>
+<li>域名访问与公网并发压测结果（ECS 公网 IP 访问已验证，域名与压测未做）</li>
+<li>CodeArts 客户端会话导出与七类编号过程截图（当前有 auto-deploy 真实排错记录与云上截图，但非客户端会话导出，仍属待补齐）</li>
+<li>人工阅读对照实验（因此材料不写任何效率提升百分比）</li>
+<li>Android / HarmonyOS 真机安装为应用、断网离线壳表现与两档视口真机截图（桌面浏览器巡检已通过，但不替代真机结论；见 docs/deployment.md 第 7.5 节清单）</li></ul></div>
+
+<footer><span>高校智讯 / CampusInsight　·　第十一届华为 ICT 大赛创新赛</span>
+<span>方案、模板、工具与空骨架就绪 ≠ 实操留痕完成</span></footer>
+</div>
+</body>
+</html>

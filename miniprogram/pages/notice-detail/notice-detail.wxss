@@ -1,0 +1,446 @@
+/* 详情页：信息密度最高的页面，靠留白与分隔线控制阅读节奏 */
+
+/* ---------------------------------------------------------------- 抬头 */
+.head {
+  padding: 8rpx 8rpx 28rpx;
+}
+
+.head-title {
+  font-size: 38rpx;
+  font-weight: 600;
+  line-height: 1.45;
+  letter-spacing: -0.3rpx;
+}
+
+.head-tags {
+  margin-top: 18rpx;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12rpx;
+}
+
+.head-src {
+  margin-top: 16rpx;
+  font-size: 24rpx;
+  color: var(--text-tertiary);
+}
+
+/* ---------------------------------------------------------------- 截止 */
+.deadline-card {
+  background: linear-gradient(135deg, #2563EB 0%, #1D4ED8 100%);
+  border-radius: 24rpx;
+  padding: 32rpx;
+  margin-bottom: 20rpx;
+  color: #FFFFFF;
+}
+
+.deadline-label {
+  font-size: 24rpx;
+  opacity: 0.85;
+}
+
+.deadline-date {
+  font-size: 56rpx;
+  font-weight: 600;
+  letter-spacing: 1rpx;
+  margin-top: 8rpx;
+  line-height: 1.2;
+}
+
+.deadline-src {
+  margin-top: 16rpx;
+  font-size: 22rpx;
+  opacity: 0.75;
+  line-height: 1.5;
+}
+
+/* ---------------------------------------------------------------- 字段 */
+.block-title {
+  font-size: 30rpx;
+  font-weight: 600;
+  margin-bottom: 20rpx;
+}
+
+.block-head {
+  margin-bottom: 20rpx;
+}
+
+.block-sub {
+  font-size: 24rpx;
+  color: var(--text-secondary);
+}
+
+.kv {
+  display: flex;
+  align-items: flex-start;
+  padding: 14rpx 0;
+  border-bottom: 2rpx solid var(--border-light);
+}
+
+.kv:last-child {
+  border-bottom: none;
+}
+
+.kv-k {
+  flex: none;
+  width: 150rpx;
+  font-size: 26rpx;
+  color: var(--text-secondary);
+}
+
+.kv-v {
+  flex: 1;
+  font-size: 28rpx;
+  color: var(--text-primary);
+  line-height: 1.55;
+  word-break: break-all;
+}
+
+.kv-block {
+  padding: 16rpx 0;
+}
+
+.bullet {
+  font-size: 27rpx;
+  color: var(--text-primary);
+  line-height: 1.65;
+  padding-left: 24rpx;
+  position: relative;
+  margin-top: 8rpx;
+}
+
+.bullet::before {
+  content: '';
+  position: absolute;
+  left: 6rpx;
+  top: 18rpx;
+  width: 8rpx;
+  height: 8rpx;
+  border-radius: 50%;
+  background: var(--primary-light);
+}
+
+/* ------------------------------------------------------------ 置信度 */
+.conf-row {
+  display: flex;
+  align-items: center;
+  margin-top: 24rpx;
+  padding-top: 20rpx;
+  border-top: 2rpx solid var(--border-light);
+}
+
+.conf-bar {
+  flex: 1;
+  height: 10rpx;
+  border-radius: 999rpx;
+  background: #F3F4F6;
+  overflow: hidden;
+}
+
+.conf-fill {
+  height: 10rpx;
+  border-radius: 999rpx;
+  background: var(--primary);
+}
+
+.conf-text {
+  flex: none;
+  margin-left: 20rpx;
+  font-size: 22rpx;
+  color: var(--text-secondary);
+}
+
+.review-tip {
+  margin-top: 18rpx;
+  padding: 18rpx 22rpx;
+  background: var(--warning-soft);
+  border-radius: 16rpx;
+  font-size: 24rpx;
+  color: var(--warning);
+  line-height: 1.55;
+}
+
+/* ---------------------------------------------------------------- 清单 */
+.step {
+  display: flex;
+  padding: 8rpx 0;
+}
+
+.step-left {
+  flex: none;
+  width: 56rpx;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  position: relative;
+}
+
+.step-no {
+  width: 44rpx;
+  height: 44rpx;
+  line-height: 44rpx;
+  text-align: center;
+  border-radius: 50%;
+  background: var(--primary-soft);
+  color: var(--primary);
+  font-size: 24rpx;
+  font-weight: 600;
+  flex: none;
+}
+
+.step-no-off {
+  background: var(--warning-soft);
+  color: var(--warning);
+}
+
+.step-line {
+  flex: 1;
+  width: 3rpx;
+  background: var(--border-light);
+  margin: 8rpx 0;
+  min-height: 24rpx;
+}
+
+.step-body {
+  flex: 1;
+  padding: 2rpx 0 28rpx 20rpx;
+  min-width: 0;
+}
+
+.step-title {
+  font-size: 28rpx;
+  line-height: 1.55;
+  color: var(--text-primary);
+  word-break: break-all;
+}
+
+.step-tags {
+  margin-top: 12rpx;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10rpx;
+}
+
+.step-evidence {
+  margin-top: 14rpx;
+  padding: 16rpx 20rpx;
+  background: #F8FAFC;
+  border-left: 6rpx solid var(--primary-light);
+  border-radius: 8rpx;
+  font-size: 23rpx;
+  color: var(--text-secondary);
+  line-height: 1.6;
+}
+
+.step-detail {
+  margin-top: 10rpx;
+  font-size: 23rpx;
+  color: var(--text-tertiary);
+}
+
+/* ---------------------------------------------------------------- 操作 */
+.action-card {
+  padding: 24rpx;
+}
+
+.task-status {
+  font-size: 30rpx;
+  font-weight: 600;
+}
+
+.task-hint {
+  font-size: 23rpx;
+  color: var(--text-tertiary);
+  margin-top: 6rpx;
+}
+
+.task-btn {
+  flex: none;
+  width: 160rpx;
+  height: 72rpx;
+  font-size: 26rpx;
+}
+
+.remove-btn {
+  margin-top: 16rpx;
+  height: 76rpx;
+  font-size: 27rpx;
+  color: var(--text-secondary);
+  border-color: var(--border);
+}
+
+.sub-btn {
+  margin-top: 16rpx;
+  height: 88rpx;
+}
+
+.retry-btn {
+  margin-top: 24rpx;
+}
+
+/* ---------------------------------------------------------------- 原文 */
+.content-text {
+  font-size: 27rpx;
+  line-height: 1.85;
+  color: #374151;
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+
+.link-row {
+  margin-top: 24rpx;
+  padding-top: 20rpx;
+  border-top: 2rpx solid var(--border-light);
+  display: flex;
+  align-items: center;
+}
+
+.link-text {
+  flex: 1;
+  font-size: 22rpx;
+  color: var(--primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.link-copy {
+  flex: none;
+  margin-left: 16rpx;
+  font-size: 24rpx;
+  color: var(--primary);
+}
+
+/* ---------------------------------------------------------------- 证据 */
+.ev-row {
+  display: flex;
+  align-items: flex-start;
+  padding: 12rpx 0;
+  border-bottom: 2rpx solid var(--border-light);
+}
+
+.ev-k {
+  flex: none;
+  width: 170rpx;
+  font-size: 24rpx;
+  color: var(--text-secondary);
+}
+
+.ev-v {
+  flex: 1;
+  font-size: 24rpx;
+  color: var(--text-primary);
+  line-height: 1.55;
+  word-break: break-all;
+}
+
+.ev-note {
+  margin-top: 20rpx;
+  font-size: 22rpx;
+  color: var(--text-tertiary);
+  line-height: 1.6;
+}
+
+.engine-note {
+  text-align: center;
+  font-size: 22rpx;
+  color: var(--text-tertiary);
+  padding: 12rpx 0 30rpx;
+}
+
+.empty-mini {
+  text-align: center;
+  padding: 40rpx 20rpx;
+  font-size: 26rpx;
+  color: var(--text-tertiary);
+}
+
+/* ---------------- 截止时间轴 ---------------- */
+/* 一条通知里可能有多套并行的批次日期，按轨道分组竖排；
+   管理侧节点压暗，本人要办的高亮，避免学生把学院的事当成自己的事。 */
+.tl-tip {
+  font-size: 22rpx;
+  color: var(--text-secondary);
+  line-height: 1.6;
+  margin: 6rpx 0 16rpx;
+}
+
+.tl-track {
+  margin-top: 16rpx;
+}
+
+.tl-track-head {
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+  margin-bottom: 10rpx;
+}
+
+.tl-track-num {
+  font-size: 22rpx;
+  color: var(--text-tertiary);
+}
+
+.tl-node {
+  display: flex;
+  align-items: flex-start;
+  gap: 14rpx;
+  padding: 14rpx 16rpx;
+  border-radius: 12rpx;
+  background: var(--bg-subtle, #f7f8fa);
+  border-left: 6rpx solid var(--border-strong, #d8dde6);
+  margin-bottom: 10rpx;
+}
+
+.tl-node.tl-mine {
+  background: var(--primary-soft, #eef3ff);
+  border-left-color: var(--primary, #2b5cff);
+}
+
+.tl-node.tl-admin {
+  opacity: 0.62;
+}
+
+.tl-date {
+  flex: 0 0 132rpx;
+  font-size: 24rpx;
+  font-weight: 600;
+  color: var(--text-primary);
+  font-variant-numeric: tabular-nums;
+  line-height: 1.5;
+}
+
+.tl-act {
+  flex: 1;
+  min-width: 0;
+}
+
+.tl-act-text {
+  font-size: 26rpx;
+  color: var(--text-primary);
+  line-height: 1.5;
+}
+
+.tl-act-role {
+  margin-top: 4rpx;
+  font-size: 21rpx;
+  color: var(--text-tertiary);
+}
+
+.tl-left {
+  flex: 0 0 auto;
+  font-size: 22rpx;
+  color: var(--text-tertiary);
+  line-height: 1.9;
+}
+
+.tl-left.tl-due {
+  color: var(--warn, #d97706);
+}
+
+.tl-foot {
+  margin-top: 18rpx;
+  font-size: 21rpx;
+  color: var(--text-tertiary);
+  line-height: 1.6;
+}

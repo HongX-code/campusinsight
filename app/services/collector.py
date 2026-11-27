@@ -632,6 +632,39 @@ def _extract_attachments(soup: BeautifulSoup, page_url: str,
     return found[:10]
 
 
+# 单元格分隔符用 U+001F（Unit Separator）而不是 \t：
+# textutil.normalize_text 里的 _SPACE_RE = [ \t\u3000]+ 会把制表符压成空格，
+# 表格列边界还没走到解析器就被抹平了。\x1f 是 ASCII 控制符，正文里不会自然出现，
+# 且不在任何空白类里，能完整穿过清洗链路。
+TABLE_CELL_SEP = "\x1f"
+
+
+def _table_to_text(table) -> str:
+    """把 <table> 序列化成「行用换行、单元格用制表符」的规整文本。
+
+    这一步是整个表格链路的地基。原先 `get_text("")` 会让行内所有 <td>
+    直接首尾相接（`085600材料与化工1027-87164677`），列边界一旦丢掉，
+    下游再怎么改正则也分不出「哪一段是专业代码、哪一段是电话」——
+    一维字符串里没有「列」这个概念，信息是不可逆丢失的。
+
+    保留列边界后，`services/tables.py` 才能给每列打语义标签并映射到
+    业务字段。行内仍有换行残留时压成空格，避免破坏「一行一记录」的假设。
+    """
+    rows: list[str] = []
+    for tr in table.find_all("tr"):
+        # 只取本行直属单元格，避免嵌套表格的格子被重复计入
+        cells = []
+        for cell in tr.find_all(["td", "th"]):
+            if cell.find_parent("tr") is not tr:
+                continue
+            text = cell.get_text(" ", strip=True)
+            text = re.sub(r"\s+", " ", text).strip()
+            cells.append(text)
+        if cells and any(cells):
+            rows.append(TABLE_CELL_SEP.join(cells))
+    return "\n" + "\n".join(rows) + "\n"
+
+
 def _node_text(node) -> str:
     """按"块级换行、行内拼接"取文本。
 
@@ -640,7 +673,17 @@ def _node_text(node) -> str:
     结果一句「成员不超过 2 人」被拆成「不超过 / 2 / 人」三行，
     句读切分、条件抽取、日期定位全部失效。这里改为：
     <br> 与块级元素才换行，行内元素直接拼接（中文场景不需要补空格）。
+
+    表格是唯一例外：它必须**先**按单元格序列化（见 `_table_to_text`），
+    不能交给下面统一的块级换行处理。`tr` 与 `table` 都在 BLOCK_TAGS 里，
+    若先走通用逻辑，行内格子会被拼成一条无分隔的长串，列语义当场丢失，
+    之后无论怎么修正则都补不回来。所以这里倒序处理（先内层后外层），
+    把每张表整体换成一个规整文本节点，再走通用流程。
     """
+    for table in reversed(node.find_all("table")):
+        if table.find_parent("table") is not None:
+            continue  # 内层表已随外层一起序列化
+        table.replace_with(NavigableString(_table_to_text(table)))
     for br in node.find_all("br"):
         br.replace_with(NavigableString("\n"))
     for tag in node.find_all(BLOCK_TAGS):
@@ -655,10 +698,20 @@ def _merge_fragments(lines: list[str]) -> list[str]:
     「2025」「年11月20日」→「2025年11月20日」；「2」「人」→「2人」。
     宁可粘错也不能丢：丢掉一个数字，截止日期就变成「2025年月日」，
     下游的年份推断和到期提醒全部失真。
+
+    表格行不参与：一个短段落（如「1」「x」）正好符合碎片特征，若被粘到
+    下一行表头前面，那一行的列数就变了，整张表的列语义全部错位。
+    所以遇到表格行时先把缓冲单独落地，再原样追加该行。
     """
     out: list[str] = []
     buf = ""
     for line in lines:
+        if TABLE_CELL_SEP in line:
+            if buf:
+                out.append(buf)
+                buf = ""
+            out.append(line)
+            continue
         if FRAGMENT_RE.match(line) and len(line) <= 6:
             buf += line
             continue

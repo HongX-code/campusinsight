@@ -24,7 +24,7 @@
 | 智能问答 | 意图识别 + 结构化字段 + 溯源回答 | 只答已收录内容，直接给出截止日期 / 材料清单 / 申请条件等确切值并附原文依据 |
 | 时间管理 | 待办、截止提醒、30 天议程 | 与解析结果联动 |
 | 数据看板 | 分类分布、解析质量、截止预警、采集渠道、录入趋势 | 支持人工复核闭环 |
-| 界面与体验 | 7 视图学生端闭环 + 20 张界面截图 | Arctic Glass Design System / 蓝色=操作、紫色=AI / 三档响应式，详见 `docs/ui_design.md` |
+| 界面与体验 | 9 视图学生端闭环 + 24 张界面截图 | Arctic Glass Design System / 蓝色=操作、紫色=AI / 三档响应式，详见 `docs/ui_design.md` |
 
 ### 为什么做"接地校验"
 
@@ -104,7 +104,7 @@ gaoxiao-zhixun/
 │   │   ├── extractor.py      # 字段抽取（日期打分、对象归一化、材料条目）
 │   │   ├── fields.py         # 结构化字段契约（年级/专业/时间/地点/联络 + 证据）
 │   │   ├── reltime.py        # 相对时间结合发布时间换算（本周五前 / 三个工作日）
-│   │   ├── validator.py      # 规则校验 C1—C9（时间倒挂、接地、置信度…）
+│   │   ├── validator.py      # 规则校验 C1—C11（时间倒挂、接地、置信度…）
 │   │   ├── conditions.py     # 资格条件原子化（11 类约束规则表）
 │   │   ├── analyzer.py       # 解析编排 + 四层保护 + 统一校验出口（含文体闸门）
 │   │   ├── llm_client.py     # 大模型适配（OpenAI 兼容）
@@ -112,10 +112,10 @@ gaoxiao-zhixun/
 │   │   ├── matcher.py        # 个性化匹配与理由生成
 │   │   └── qa.py             # 检索 + 溯源问答
 │   ├── database/
-│   │   ├── models.py         # 四张核心表
+│   │   ├── models.py         # 四张核心表 + 四张多端治理表
 │   │   ├── connection.py     # 引擎、会话、健康检查
 │   │   └── init.sql          # RDS for MySQL 建表脚本
-│   ├── templates/index.html  # 单页应用（7 视图骨架 + 线性图标 sprite）
+│   ├── templates/index.html  # 单页应用（9 视图骨架 + 线性图标 sprite）
 │   └── static/
 │       ├── css/style.css     # Arctic Glass Design System（设计变量 / 组件 / 三档响应式）
 │       └── js/app.js         # 视图切换、数据渲染与三级可信链路交互
@@ -141,10 +141,10 @@ gaoxiao-zhixun/
 │   ├── real_audit.py         # 真实集解析质量审计（生成 docs/real_audit.md）
 │   ├── benchmark.py          # 处理效率实测（生成 docs/benchmark.md）
 │   ├── sync_metrics.py       # 把实测指标回灌到 README / 测试报告 / 视频脚本（幂等）
-│   ├── capture.py            # 一键重生成 20 张界面截图
+│   ├── capture.py            # 一键重生成 24 张界面截图
 │   ├── codearts_tools.py     # doctor / bootstrap / split / index / verify：环境、骨架、索引、口径
 │   └── ci_gate.py            # 构建与质量门禁（9 阶段，失败即停，不吞退出码）
-├── tests/test_smoke.py       # 端到端自检（143 项，采集用例离线可跑）
+├── tests/test_smoke.py       # 端到端自检（259 项，采集用例离线可跑）
 ├── requirements.txt
 ├── .env.example
 ├── run.py                    # 本地启动器（--check 体检 / --open 自动开浏览器）
@@ -236,7 +236,7 @@ py -3.12 run.py --lan
 - 离线壳缓存页面与静态资源，接口一律不缓存；离线时 AI 问答与解析会提示联网。
 - 移动端底部导航含「更多」，可进入数据总览与采集中心；窄屏顶部有独立搜索入口。
 - AI 助手提供两个页签：**智能问答**（原文出处 + 引擎标识）、**AI 解析实验室**（粘贴通知即看
-  字段证据、C1—C9 校验与降级原因，不写入数据库）。
+  字段证据、C1—C11 校验与降级原因，不写入数据库）。
 - 智能问答的 6 个示例问题全部与演示库中真实通知对齐、可单轮精准回答：问材料就列材料清单、
   问条件就列申请条件、问截止就给确切日期；回答由已复核的结构化字段组装并带 `[n]` 出处，
   底部标注识别到的意图与依据字段数。示例不使用「适合我」「这个」这类无依据指代，
@@ -308,13 +308,13 @@ A 系列**不参与 `split`**，11 份独立提示词口径不变；两份文档
 
 ```bash
 python scripts/crawl.py --all --limit 6 --save data/real_notices.json   # 抓取真实通知（需联网）
-python tests/test_smoke.py                  # 143 项端到端自检（无需联网）
+python tests/test_smoke.py                  # 259 项端到端自检（无需联网）
 python scripts/evaluate.py                  # 开发集评测（24 份）
 python scripts/evaluate.py --set holdout    # 留出集评测（8 份，检验泛化）
 python scripts/real_audit.py                # 真实集质量审计（生成 docs/real_audit.md）
 python scripts/benchmark.py                 # 处理效率实测（生成 docs/benchmark.md）
 python scripts/sync_metrics.py              # 把实测指标回灌到全部 Markdown 材料
-python scripts/capture.py                   # 一键重生成 20 张界面截图
+python scripts/capture.py                   # 一键重生成 24 张界面截图
 python scripts/reset_db.py                  # 改动解析逻辑后重建演示数据
 
 # CodeArts 资产与门禁（详见 docs/codearts_prompts.md 与 docs/codearts_prompts_advanced.md；python 按 doctor 输出替换）
@@ -360,7 +360,7 @@ python ../../申报材料/export_pdf.py         # 导出 PDF 并校验页数（�
 | `docs/deployment.md` | 部署与华为云接入（含连通性自检脚本） |
 | `docs/test_report.md` | 测试报告（自检 / 双集评测 / 缺陷复盘） |
 | `docs/video_script.md` | 演示视频分镜脚本（5 分 30 秒，含录制检查清单） |
-| `docs/ui_design.md` | 界面设计规范（Arctic Glass Design System）：Design DNA / 设计变量 / 7 视图 / 组件规范 / 三级可信链路 / 20 张截图清单 |
+| `docs/ui_design.md` | 界面设计规范（Arctic Glass Design System）：Design DNA / 设计变量 / 9 视图 / 组件规范 / 三级可信链路 / 24 张截图清单 |
 | `docs/codearts_prompts.md` | **CodeArts 全流程智能开发体系**：执行摘要、双闭环·三层证据方法论、就绪度矩阵、阅读导航与术语表；P0 常驻约束 + P1—P10 任务提示词、Day 1—Day 7 逐日排期、短卡片、七类留痕、红线与统一回归清单（§1.0 含运行环境口径） |
 | `docs/codearts_prompts_advanced.md` | **v2.0 进阶提示词与执行契约**：契约式提示词三层（上下文 / 执行 / 验收）、B0 接手注入块、A0 通用执行契约、A1—A10 可直接投喂的任务提示词、验收矩阵、真实踩坑清单与状态边界；不写死易变数字，不参与 `split` |
 | `codearts/README.md` 与 `CodeArts实操作战台.html` | 资产说明 + 单页执行看板：11 个可复制提示词、5 类留痕模板、1 份填写示范、逐日时间轴与留痕进度（本地持久化）；**醒目标注「模板非实操证据」** |
@@ -407,6 +407,34 @@ CRAWL_ALLOWED_DOMAINS=whut.edu.cn,edu.cn,ac.cn
 ```
 
 采集器只允许访问白名单域名，且显式拒绝内网地址与 localhost（防 SSRF）。
+
+### 5. 数据脱敏（公开仓库前必跑）
+
+`data/real_notices.json` 是真实站点快照，原文里带着工作人员的**个人手机号、个人邮箱、联系人姓名与校内系统内网 IP**。这些内容出现在校内页面上是正常的，但随仓库公开就等于把别人的联系方式再发布一次，所以入库前必须换成占位值。
+
+只替换四类个人信息，业务事实一律不动：
+
+| 类别 | 占位规则 |
+| --- | --- |
+| 个人手机号 | `1380000XXXX`（保留 11 位手机形态，正则仍可识别，但不指向真人） |
+| 个人邮箱（qq/126/163 等） | `exampleN@example.com` |
+| 联系人姓名 | 「姓 + 老师」，保留「这是个人在办这件事」的信息 |
+| 内网 IP | `host-NNNN.example.edu.cn`，保留端口后缀 |
+
+刻意**不改**三类：**校名与机构名**（作品要解决的问题域，抹掉就看不懂场景）、**机构角色邮箱**（`xgb@` / `yjsy@` 这类是部门对外公开信箱，不是个人信息）、**带区号的办公电话**（`027-87xxxxxx` 是单位总机，公开可查）。
+
+```bash
+python scripts/sanitize_data.py --check     # 只检查，有残留退出码 1
+python scripts/sanitize_data.py             # 就地脱敏（幂等，重复跑不再变化）
+python scripts/sanitize_demo_db.py --check  # 演示库同样检查
+```
+
+两点值得说明：
+
+1. **真值不在代码里**。`scripts/sanitize_data.py` 只带「怎么替换」的规则，具体「替换谁」放在工作区根的 `.sanitize_map.json`（已在 `.gitignore` 中）。否则脱敏就变成「先把真号抄进脚本，再用它去替换真号」，泄漏只是换个文件继续存在。映射文件缺失时手机号 / 邮箱 / 内网 IP 仍可靠正则兜底并生成稳定占位值，姓名类会明确提示未启用而不是假装扫过。
+2. **演示库也要脱敏**。`data/*.db` 本身被忽略，但它是截图与演示的唯一数据来源——库里留着真号，下一次截图就会把号码印在图上再提交进仓库，等于绕开 `.gitignore`。
+
+脱敏后必须回归验证解析行为不变：`tests/test_smoke.py`、`scripts/evaluate.py`（开发集 + 留出集）、`scripts/real_audit.py` 三项指标要与脱敏前逐字一致。实测四类占位值不改变任何字段抽取结果（`real_audit.py` 报告除生成时间戳外无差异）。
 
 ---
 
@@ -480,14 +508,14 @@ CRAWL_ALLOWED_DOMAINS=whut.edu.cn,edu.cn,ac.cn
 | 设计条款 | 实现 | 验证 |
 | --- | --- | --- |
 | 总控 8.2 十四类结构化字段 | `app/services/fields.py` 确定性抽取年级/学历、专业/学院、报名开始、活动举办、地点、联系人/电话/邮箱，每字段附原文证据；不交给生成式模型 | `shot-fields.png`、自检 [13] |
-| 技文1 第 26 章 / 技文2 第 29、46 章 规则校验 | `app/services/validator.py` C1—C9（日期格式、时间倒挂、报名起止、证据接地、原文可定位、活动冲突、置信度软提示、文体字段泄漏）；`analyzer._finalize()` 是规则与大模型两条链路的统一出口，结果写入 `checks` | 自检 [13]、`shot-review.png` |
+| 技文1 第 26 章 / 技文2 第 29、46 章 规则校验 | `app/services/validator.py` C1—C11（日期格式、时间倒挂、报名起止、证据接地、原文可定位、活动冲突、置信度软提示、文体字段泄漏）；`analyzer._finalize()` 是规则与大模型两条链路的统一出口，结果写入 `checks` | 自检 [13]、`shot-review.png` |
 | 技文2 第 21 章 相对时间 | `app/services/reltime.py`：「本周五前」「三个工作日内」「本月底前」结合发布时间换算；无发布时间或非办理语境则置空并标记待复核 | 自检 [13] |
 | 技文2 第 32 章 硬条件匹配 | `app/services/matcher.py` 用结构化枚举做专业/年级/学历冲突判定，明确冲突直接判「暂不符合」，不靠短字符串包含猜 | 自检 [6][13] |
 | 技文1 第 47 章 人工审核 | 详情抽屉「通过 / 修正字段 / 驳回重解析」三态；驳回回退待复核，重新通过清理旧驳回说明 | `shot-review.png`、自检 [13] |
 | 总控 25.4 / 技文2 第 61 章 效率实测 | `scripts/benchmark.py` 现场计时生成 `docs/benchmark.md` | 见 6.5 |
 
 设计原则一句话概括：**AI 负责理解，程序负责约束，原文负责证明**。
-四层保护（结构校验 / 文体闸门 / 原文接地 / 规则兜底）+ 规则校验（C1—C9 统一校验出口）；
+四层保护（结构校验 / 文体闸门 / 原文接地 / 规则兜底）+ 规则校验（C1—C11 统一校验出口）；
 低置信度只作软提示，硬拦截只留给时间倒挂、证据失配、格式非法这类真异常，避免把全量通知标红。
 
 ### 6.5 处理效率实测
@@ -516,10 +544,10 @@ CRAWL_ALLOWED_DOMAINS=whut.edu.cn,edu.cn,ac.cn
 （`app/static/css/style.css` 1179 行、`app/static/js/app.js` 1222 行、`app/templates/index.html` 388 行）。
 
 - **Design DNA**：冷感极简 + Apple HIG 留白 + Material 3 组件规范 + Linear / Notion 信息组织。浅灰白底 `#F6F8FC`、白卡片、深灰文字；蓝色 `#2563EB` 只用于品牌与核心操作，紫色 `#7C3AED` 只用于 AI 能力，绿 / 橙 / 红分别表达正常 / 临近 / 紧急截止。明确反对「满屏蓝色科技大屏」与传统高校 OA 风格，AI 是能力而不是装饰，不做粒子、霓虹与大面积渐变，全站无 Emoji、统一线性图标。
-- **7 视图学生端闭环**：`home` 智能工作台（**新的默认视图**）、`dashboard` 数据总览、`notices` 通知中心、`sources` 采集中心、`match` 我的匹配、`qa` AI 助手、`tasks` 我的任务；248px 侧栏分组导航 + 64px 毛玻璃顶栏 + 1280px 内容区，8pt 间距、12–20px 圆角、150–300ms 动效，三档响应式（≥1200px 完整侧栏 / 768–1199px 72px Icon Rail / <768px 隐藏侧栏并改底部 5 项导航）。
+- **9 视图学生端闭环**：`home` 智能工作台（**新的默认视图**）、`dashboard` 数据总览、`notices` 通知中心、`sources` 采集中心、`match` 我的匹配、`qa` AI 助手、`tasks` 我的任务；248px 侧栏分组导航 + 64px 毛玻璃顶栏 + 1280px 内容区，8pt 间距、12–20px 圆角、150–300ms 动效，三档响应式（≥1200px 完整侧栏 / 768–1199px 72px Icon Rail / <768px 隐藏侧栏并改底部 5 项导航）。
 - **首页智能工作台**：AI 洞察 Hero + 4 张 Stats Card + 3 张推荐机会（含匹配度与逐条理由）+ 右侧「即将截止」与「可信链路 5 节点」。匹配分是 5–98 的可解释加权分，界面标注「规则加权匹配度（非录取概率）」，不冒充录取概率。
 - **三级可信链路**：详情抽屉把 `checks` 报告渲染为 `.check-panel`，14 类字段与原文依据绑定为一组 `.field-block`，点击「原文依据」在通知原文中黄色高亮并滚动定位，形成「AI 结论 → 结构化信息 → 原文证据」的界面闭环。
-- **20 张界面截图**：由 `python scripts/capture.py` 一键重生成，覆盖首页长图、14 字段完整长图、原文依据高亮、审核三态与移动端首屏等。
+- **24 张界面截图**：由 `python scripts/capture.py` 一键重生成，覆盖首页长图、14 字段完整长图、原文依据高亮、审核三态与移动端首屏等。
 
 完整设计变量表、页面清单、组件规范与截图检查要点见 **`docs/ui_design.md`**。
 

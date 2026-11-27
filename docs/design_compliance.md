@@ -1,4 +1,4 @@
-# 设计符合度矩阵（总控文档 / 技术文档 1 / 技术文档 2）
+﻿# 设计符合度矩阵（总控文档 / 技术文档 1 / 技术文档 2）
 
 > 版本 v1.2　|　核对日期 2026-11-07　|　核对对象：`作品文件/gaoxiao-zhixun/`
 >
@@ -16,7 +16,7 @@
 
 核对口径：以 `python tests/test_smoke.py`、`scripts/evaluate.py`、`scripts/real_audit.py`、
 `scripts/benchmark.py`、`scripts/capture.py` 的实际输出为准；界面项以 `docs/shot-*.png` 为准。
-当前规模：**34 个路由端点**（含页面 `/` 与健康检查，其中 JSON API 28 个）、约 **14300 行源码**（Python 10400 + 前端 3858，不含文档）、**143 项端到端自检全通过**、**20 张界面截图**、Markdown 文档 **22 份**（`docs/` 下 21 份 + 根目录 README；新增 `docs/codearts_prompts_advanced.md`）。另有 `codearts/` 下的 1 份资产说明、11 份独立提示词、5 份留痕模板、1 份填写示范与 1 个单页实操作战台，属**方案资产**，不计入交付文档数。
+当前规模：**49 个路由端点**（含页面 `/` 与健康检查，其中 JSON API 28 个）、约 **21000 行源码**（Python 16400 + 前端 4629，不含文档）、**259 项端到端自检全通过**、**24 张界面截图**、Markdown 文档 **22 份**（`docs/` 下 21 份 + 根目录 README；新增 `docs/codearts_prompts_advanced.md`）。另有 `codearts/` 下的 1 份资产说明、11 份独立提示词、5 份留痕模板、1 份填写示范与 1 个单页实操作战台，属**方案资产**，不计入交付文档数。
 
 ---
 
@@ -26,7 +26,7 @@
 | --- | --- | --- | --- | --- |
 | 五章 · 16 项目标 | 建库、采集、清洗、分类、抽取、匹配、搜索、问答、截止管理、统计、云、CodeArts、部署、测试集、量化评估 | `app/` 全链路 + `docs/` | 自检 + 双集评测 + 真实集审计 | ✅（云端部署除外） |
 | 6.1 五大模块 | 通知中心 / AI 解析 / 个性化匹配 / AI 助手 / 数据管理 | `app/templates/index.html` **七个视图（含智能工作台首页）** | `docs/ui_design.md`、`shot-home.png`、`shot-*.png` | ✅ |
-| 总控 6.1 / 界面与交互 | Arctic Glass Design System：冷感极简、蓝色=操作 / 紫色=AI、7 视图学生端闭环、三档响应式、三级可信链路界面落点 | `app/static/css/style.css` + `docs/ui_design.md` + `app/static/js/app.js` | 20 张界面截图（`shot-home.png` / `shot-home-full.png` / `shot-fields-full.png` / `shot-evidence.png` / `shot-mobile.png` 等）、`docs/test_report.md` T5 界面检查 | ✅ |
+| 总控 6.1 / 界面与交互 | Arctic Glass Design System：冷感极简、蓝色=操作 / 紫色=AI、9 视图学生端闭环、三档响应式、三级可信链路界面落点 | `app/static/css/style.css` + `docs/ui_design.md` + `app/static/js/app.js` | 24 张界面截图（`shot-home.png` / `shot-home-full.png` / `shot-fields-full.png` / `shot-evidence.png` / `shot-mobile.png` 等）、`docs/test_report.md` T5 界面检查 | ✅ |
 | 7.1 列表字段 | 标题、分类、发布、截止、来源、状态、是否匹配 | `app/static/js/app.js` 通知卡片 | `shot-notices.png` | ✅ |
 | **8.2 十四字段** | 类别、对象、报名起止、活动时间、条件、专业/年级限制、材料、方式、地点、联系人/电话、原文依据 | `services/extractor.py` + **`services/fields.py`** + `database/models.py` | `shot-fields.png`、自检 [13] | ✅（本轮补齐后六项） |
 | 九章 可信度 | AI 结果 + 原文依据 + 置信状态；无法确定给「待人工确认」 | `analyzer.py` 接地校验 + `validator.py` + 详情抽屉 | 自检 [4][13] | ✅ |
@@ -41,13 +41,13 @@
 | 十七/十八 单体架构 | 不上微服务/K8s/消息队列 | 单 FastAPI 进程 + SQLite/MySQL | `app/main.py` | ✅ |
 | 十九章 技术栈 | FastAPI + 原生 HTML/CSS/JS + MySQL + 统一 AIService 封装 | `app/`，`services/llm_client.py` | `requirements.txt` | ✅ |
 | 二十一/二十二 CodeArts | 需求→生成→构建→调试→修复→部署的双闭环，三层证据可核验，留痕不夸大 | `.codeartsdoer/AGENTS.md` 常驻约束 + `docs/codearts_prompts.md`（P0—P10、**Day 1—Day 7 逐日排期**、短卡片、红线）+ `codearts/prompts`、`codearts/templates` + `scripts/codearts_tools.py`、`scripts/ci_gate.py` | `codearts_tools.py doctor / bootstrap --check / index / verify`、`ci_gate.py --dry-run` | ⏳ 体系、资产、环境体检 / 一键骨架 / 9 阶段门禁已就绪，实操截图与会话导出待团队补齐 |
-| 二十三 三个创新点 | 信息理解 / 机会匹配 / 结果可验证 | 答辩 PPT 第 8—9 页 | `build_ppt.py` | ✅ |
+| 二十三 五个创新点 | 信息理解 / 机会匹配 / 结果可验证 / 截止时间是多节点网格 / 表格保留列边界 | 答辩 PPT 第 6—11 页 | `build_ppt.py` | ✅ |
 | **25.4 处理效率** | 人工阅读耗时 vs 系统解析耗时 | **`scripts/benchmark.py` → `docs/benchmark.md`** | 单条中位数、100 条吞吐、API/DB 响应 | ⚠️ 系统侧已实测；人工侧需真人计时实验，未编造 |
 | 二十五 50—100 份测试集 | 人工标注类别/截止/对象/条件/材料 | 32 份逐字段标注（24 dev + 8 留出）+ 42 份真实快照 = 74 份通知 | `data/evaluation/`、`real_audit.md` | ⚠️ 语料总量达标，逐字段标注为 32 份，口径已如实区分 |
 | 二十六 Test 01—08 | 普通/多日期/专业/年级/无截止/格式混乱/重复/JSON 异常 | `tests/test_smoke.py` + 双集评测 | 自检 + `evaluate.py` | ✅ |
 | 二十七 安全 | Key 不进前端、最少必要个人信息、robots 与访问限速 | `.env.example`、`config/sources.json` 0.8s 限速 | 自检 [8] | ✅ |
 | 三十三 Demo 流程 | 围绕一个真实用户故事，不逐菜单点击 | `docs/video_script.md` 12 个镜头（Arctic Glass 学生端闭环，5 分 30 秒） | — | ⏳ 视频待录制 |
-| 三十四 PPT 10—15 页 | 初赛建议页数 | 当前 20 页（总决赛模板） | `build_ppt.py` | ⚠️ 超出建议页数，按总决赛模板扩展，见备注 |
+| 三十四 PPT 10—15 页 | 初赛建议页数 | 当前 22 页（封面 + 20 页正文 + 尾页，总决赛模板） | `build_ppt.py` | ⚠️ 超出建议页数，按总决赛模板扩展，见备注 |
 | 三十八 原则四 | 所有量化指标必须真实测试 | `evaluate.py` / `real_audit.py` / `benchmark.py` 均现场计算 | 报告头部标注生成时间 | ✅ |
 
 ---
@@ -65,12 +65,12 @@
 | 十七/十八 evidence | AI 结果与原文分开存，可追溯 | `notice_analysis` 独立表 + `evidence` 列 | `docs/database.md` | ✅ |
 | 二十二 结构化输出 | 强制 JSON Schema，不留自然语言 | `analyzer.SYSTEM_PROMPT` + `_validate_llm` | 自检 [4] | ✅ |
 | 二十五 幻觉 | 原文约束 + 结构化 + 证据 + 置信度 + 人工审核 | 四层保护 + 文体闸门 | `architecture.md` 第 5 节 | ✅ |
-| **二十六 规则校验** | `deadline >= publish_time`，异常标待审核 | **`services/validator.py` C1—C9** | 自检 [13]、`shot-review.png` | ✅（本轮补齐） |
+| **二十六 规则校验** | `deadline >= publish_time`，异常标待审核 | **`services/validator.py` C1—C11** | 自检 [13]、`shot-review.png` | ✅（本轮补齐） |
 | 二十八 匹配三层 | 硬规则 / 软匹配 / AI 解释 | `matcher.py` 结构化硬条件 + 兴趣软匹配 + reasons | 自检 [6][13] | ✅ |
 | 二十九 评分权重 | 40/20/20/10/10 仅作设计参数，不宣称为客观最优 | `matcher.py` 采用加分制而非伪精确百分比 | `docs/architecture.md` | ✅ 见备注 |
 | 三十 问答 | 先查库拿事实，再让模型组织语言 | `services/qa.py` | `shot-qa.png` | ✅ |
 | 三十一/三十九 RAG | 第一版不强制向量库 | — | — | 📌 文档明确列为 V2 |
-| 三十四 API | 前后端分离，接口可复用 | 34 个路由端点，OpenAPI 自动生成 | `/docs` | ✅ |
+| 三十四 API | 前后端分离，接口可复用 | 49 个路由端点，OpenAPI 自动生成 | `/docs` | ✅ |
 | 四十二 日志 | 爬虫 / API / AI / 异常 / 任务日志 | `logging` 分模块 logger | `app/main.py` 中间件 | ⚠️ 应用日志已覆盖，未落库成 `crawl_logs`/`ai_logs` 表 |
 | 四十三 异常 | 单页失败不拖垮整批 | `crawl_all` 单源 try/except、`analyze` 模型兜底 | 自检 [9] | ✅ |
 | 四十四/四十五 | JSON 容错 + Pydantic 校验 | `llm_client.chat_json` + `serializers.py` | 自检 [4] | ✅ |
@@ -102,7 +102,7 @@
 | 三十二 硬条件 | 专业/年级/学历/学院走规则，冲突直接不匹配 | `matcher._check_grade_hard` / `_check_major_hard` | 自检 [13] | ✅（本轮补齐） |
 | 三十四 匹配评分 | 权重是设计参数，需说明非客观最优 | `matcher.py` 加分制 | `docs/architecture.md` | ✅ |
 | 三十六 问答 | 检索 + 事实 + 生成，不让模型自由回答 | `qa.py` | `shot-qa.png` | ✅ |
-| 四十二 API | 用户/通知/匹配/问答/待办接口 | 34 个路由端点 | `docs/api.md` | ✅ |
+| 四十二 API | 用户/通知/匹配/问答/待办接口 | 49 个路由端点 | `docs/api.md` | ✅ |
 | 四十九—五十二 华为云 | CodeArts / RDS / DCS(Redis) / AI 模型服务 / 环境变量 | `config.py`、`llm_client.py`、`cache.py`、`connection.py`、`deploy/cloud/terraform/`、`scripts/cloud_bootstrap.py` | `docs/cloud_services.md`、`deploy/README.md` | ⏳ 代码与脚本就绪，真实开通/连通待验证 |
 | 五十三 日志 | 爬虫 / API / AI / 异常 / 任务 | 分模块 logger | — | ⚠️ 未落库 |
 | 五十六 数据生命周期 | 原始数据与 AI 数据分离 | `notices` / `notice_analysis` 两表 | `docs/database.md` | ✅ |
@@ -140,7 +140,7 @@
 | 条款 | 之前 | 现在 |
 | --- | --- | --- |
 | 总控 8.2 十四字段 | 只有 8 个字段，专业/年级混在自由文本 | 新增 `services/fields.py`，14 字段全部落地并带证据 |
-| 技文1 第 26 章 / 技文2 第 29、46 章 规则校验 | 无 | `services/validator.py` C1—C9 |
+| 技文1 第 26 章 / 技文2 第 29、46 章 规则校验 | 无 | `services/validator.py` C1—C11 |
 | 技文2 第 21 章 相对时间 | 只认绝对日期 | `services/reltime.py`，含「无法换算则置空待复核」 |
 | 技文2 第 32 章 硬条件匹配 | 字符串包含模糊猜 | `matcher` 用归一化枚举做冲突判定 |
 | 技文1 第 47 章 人工审核 | 只有 API，无界面 | 详情抽屉三态操作区 + `shot-review.png` |
@@ -154,8 +154,8 @@
 | --- | --- | --- | --- |
 | 新增智能工作台首页为默认视图（AI 洞察 Hero / 4 张 Stats Card / 推荐机会 / 即将截止 / 可信链路 5 节点） | `app/templates/index.html` `#view-home`、`app/static/js/app.js` `renderHome()` | `shot-home.png`、`shot-home-ai.png`、`shot-home-opps.png`、`shot-home-full.png` | ✅ |
 | Arctic Glass Design System：`:root` 设计变量、冷感极简配色（蓝色=操作 / 紫色=AI）、卡片与按钮五态 | `app/static/css/style.css`、`docs/ui_design.md` | `docs/ui_design.md` 第 3 节、`docs/test_report.md` T5 变量与组件五态检查 | ✅ |
-| 7 视图与三档响应式（≥1200px 完整侧栏 / 768–1199px 72px Icon Rail / <768px 隐藏侧栏 + 底部 5 项导航） | `app/static/css/style.css` 第 12 节、`app/static/js/app.js` `switchView()` | `shot-mobile.png`、`shot-mobile-full.png`、T5 三档响应式检查 | ✅ |
+| 9 视图与三档响应式（≥1200px 完整侧栏 / 768–1199px 72px Icon Rail / <768px 隐藏侧栏 + 底部 5 项导航） | `app/static/css/style.css` 第 12 节、`app/static/js/app.js` `switchView()` | `shot-mobile.png`、`shot-mobile-full.png`、T5 三档响应式检查 | ✅ |
 | 字段-证据绑定：14 类字段双列网格，字段与原文依据绑定为一组 `.field-block`，证据块不占整行 | `app/static/js/app.js` `fieldBlock()`、`app/static/css/style.css` `.field-block` | `shot-fields.png`、`shot-fields-full.png` | ✅ |
 | 原文依据点击 → 通知原文黄色高亮并滚动定位（AI 结论 → 结构化信息 → 原文证据） | `app/static/js/app.js` `jumpToEvidence()`、`.content-box mark` | `shot-evidence.png`、T5 原文依据高亮检查 | ✅ |
 | 截止时间状态系统（正常绿 / 临近橙 / 紧急红 / 已截止灰 / 未识别）与规则校验审核三态 `.check-panel` | `app/static/js/app.js` `deadlineInfo()`、`app/static/css/style.css` `.dl-*` / `.check-panel` | `shot-notices.png`、`shot-review.png` | ✅ |
-| 20 张界面截图一键重生成 | `scripts/capture.py`、`docs/shot-*.png` | `python scripts/capture.py`、`docs/test_report.md` 第 7 节 | ✅ |
+| 24 张界面截图一键重生成 | `scripts/capture.py`、`docs/shot-*.png` | `python scripts/capture.py`、`docs/test_report.md` 第 7 节 | ✅ |

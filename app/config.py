@@ -60,6 +60,24 @@ class Settings:
     APP_HOST: str = os.getenv("APP_HOST") or "127.0.0.1"
     APP_PORT: int = int(os.getenv("APP_PORT") or 8000)
 
+    # ---------------- 微信小程序（第二终端） ----------------
+    # 未配置 AppID/Secret 时，小程序端走「游客演示模式」：登录接口返回
+    # 一个稳定的演示用户，所有功能照常可用，便于无小程序账号时答辩演示。
+    WECHAT_APPID: str = os.getenv("WECHAT_APPID") or ""
+    WECHAT_SECRET: str = os.getenv("WECHAT_SECRET") or ""
+    # 订阅消息模板 ID（微信公众平台 -> 订阅消息 里申请的一次性订阅）
+    WECHAT_TEMPLATE_DEADLINE: str = os.getenv("WECHAT_TEMPLATE_DEADLINE") or ""
+    # 小程序版本环境：developer 开发版 / trial 体验版 / formal 正式版。
+    # 推错这个值微信会直接不下发，且报错信息很不直观，所以要能显式配置。
+    WECHAT_MP_STATE: str = (os.getenv("WECHAT_MP_STATE") or "developer").lower()
+    # 小程序登录态有效期（天），与微信 session 无关，仅用于本系统签发的本地票据
+    WECHAT_TOKEN_TTL_DAYS: int = int(os.getenv("WECHAT_TOKEN_TTL_DAYS") or 30)
+    # 推送是否启用：未配置模板 ID 时自动降级为「站内提醒」，不报错
+    WECHAT_PUSH_ENABLED: bool = os.getenv("WECHAT_PUSH_ENABLED", "true").lower() != "false"
+
+    # 日历订阅（ICS）里的站点标识，用于 UID 生成
+    CALENDAR_UID_DOMAIN: str = os.getenv("CALENDAR_UID_DOMAIN") or "campusinsight.local"
+
     @property
     def access_url(self) -> str:
         """可直接粘贴进浏览器的首页地址；通配监听地址一律折算为 127.0.0.1。"""
@@ -81,6 +99,37 @@ class Settings:
         if "mysql" in self.DATABASE_URL:
             return "MySQL / 华为云 RDS"
         return "外部数据库"
+
+    @property
+    def is_mysql(self) -> bool:
+        """是否外接 MySQL（华为云 RDS for MySQL 与自建 MySQL 走同一协议）。
+
+        健康检查需要区分「已配置」与「真连通」，而中文 label 只适合给人看，
+        给程序判断要用布尔量，避免把 "MySQL / 华为云 RDS" 这种展示文案写进条件里。
+        """
+        return "mysql" in self.DATABASE_URL.lower()
+
+    @property
+    def is_redis(self) -> bool:
+        """是否配置了 Redis（华为云 DCS for Redis 与自建 Redis 走同一协议）。"""
+        return bool(self.REDIS_URL.strip())
+
+    @property
+    def is_maas(self) -> bool:
+        """是否走华为云 ModelArts Studio（MaaS）的 OpenAI 兼容接口。"""
+        return self.llm_enabled and (
+            self.LLM_PROVIDER == "maas" or "modelarts-maas" in self.LLM_BASE_URL
+        )
+
+    @property
+    def wechat_enabled(self) -> bool:
+        """是否具备真实调用微信接口的能力（能换 openid）。"""
+        return bool(self.WECHAT_APPID and self.WECHAT_SECRET)
+
+    @property
+    def wechat_push_ready(self) -> bool:
+        """订阅消息可用的充要条件：能登录 + 配了模板 + 未主动关闭。"""
+        return self.wechat_enabled and bool(self.WECHAT_TEMPLATE_DEADLINE) and self.WECHAT_PUSH_ENABLED
 
 
 settings = Settings()

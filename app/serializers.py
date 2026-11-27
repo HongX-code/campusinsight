@@ -20,6 +20,12 @@ def loads(text: str, default):
 def analysis_to_dict(a: NoticeAnalysis | None) -> dict | None:
     if a is None:
         return None
+    nodes = loads(a.timeline, [])
+    tracks: list[str] = []
+    for node in nodes:
+        track = (node or {}).get("track") or ""
+        if track and track not in tracks:
+            tracks.append(track)
     return {
         "notice_id": a.notice_id,
         "category": a.category,
@@ -42,6 +48,8 @@ def analysis_to_dict(a: NoticeAnalysis | None) -> dict | None:
         "materials": loads(a.materials, []),
         "apply_method": a.apply_method,
         "evidence": loads(a.evidence, {}),
+        "timeline": nodes,
+        "timeline_tracks": tracks,
         "confidence": a.confidence,
         "needs_review": a.needs_review,
         "engine": a.engine,
@@ -68,6 +76,20 @@ def notice_to_dict(n: Notice, with_analysis: bool = True) -> dict:
     }
     if with_analysis:
         data["analysis"] = analysis_to_dict(n.analysis)
+        # 表格结构是从正文里读出来的视图，不落库（列边界就在 content 的 \x1f 里），
+        # 所以详情响应这里即时算一次。纯字符串切分，成本可以忽略。
+        if data["analysis"] is not None:
+            from app.services import tables as tables_mod
+
+            sheet = tables_mod.extract(n.content or "")
+            data["analysis"]["table_stats"] = sheet.get("stats") or {}
+            data["analysis"]["table_note"] = sheet.get("reason") if sheet.get("degraded") else ""
+            data["analysis"]["table_needs_recollect"] = bool(sheet.get("needs_recollect"))
+            data["analysis"]["table_detail"] = [
+                {"columns": t["columns"], "kinds": t["kinds"], "kind": t["kind"],
+                 "rows": len(t["rows"]), "headers": t["headers"]}
+                for t in (sheet.get("tables") or [])
+            ]
     return data
 
 

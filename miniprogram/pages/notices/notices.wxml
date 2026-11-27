@@ -1,0 +1,71 @@
+<!-- 通知列表：搜索 + 分类筛选 + 无限滚动 -->
+<view class="sticky-head">
+
+  <!-- 搜索框 -->
+  <view class="search-box">
+    <view class="search-icon" aria-hidden="true"></view>
+    <input
+      class="search-input"
+      value="{{keyword}}"
+      placeholder="搜索标题或正文关键词"
+      placeholder-class="search-ph"
+      confirm-type="search"
+      bindinput="onSearchInput"
+      bindconfirm="onSearchConfirm"
+    />
+    <view wx:if="{{keyword}}" class="search-clear" bindtap="clearSearch">×</view>
+  </view>
+
+  <!-- 分类 -->
+  <scroll-view class="cat-scroll" scroll-x enable-flex show-scrollbar="{{false}}">
+    <view
+      wx:for="{{categories}}"
+      wx:key="*this"
+      class="cat-chip {{category === item ? 'cat-chip-on' : ''}}"
+      data-value="{{item}}"
+      bindtap="pickCategory"
+    >{{item}}</view>
+  </scroll-view>
+
+  <view class="list-count">共 {{total}} 条</view>
+</view>
+
+<view class="container list-body">
+
+  <view wx:if="{{loading}}" class="loading">正在加载…</view>
+
+  <view wx:elif="{{error}}" class="empty">
+    {{error}}
+    <view class="btn btn-ghost retry-btn" bindtap="retry">重试</view>
+  </view>
+
+  <view wx:elif="{{items.length === 0}}" class="empty">没有找到符合条件的通知</view>
+
+  <block wx:else>
+    <view
+      wx:for="{{items}}"
+      wx:key="id"
+      class="card card-tap"
+      data-id="{{item.id}}"
+      bindtap="openNotice"
+    >
+      <view class="card-title ellipsis-2">{{item.title}}</view>
+
+      <view class="meta-row">
+        <text class="tag">{{item.category}}</text>
+        <text wx:if="{{!item.parsed}}" class="tag tag-gray">待解析</text>
+        <text wx:elif="{{!item.actionable}}" class="tag tag-gray">资讯</text>
+        <text wx:elif="{{item.needs_review}}" class="tag tag-warn">待复核</text>
+        <text wx:if="{{item.deadline}}" class="tag tag-danger">{{item.deadline}} 截止</text>
+      </view>
+
+      <view class="src-row">
+        <text class="src-name ellipsis">{{item.source_name}}</text>
+        <text class="src-time">{{item.publish_time}}</text>
+      </view>
+    </view>
+
+    <view wx:if="{{loadingMore}}" class="loading">加载更多…</view>
+    <view wx:elif="{{!hasMore}}" class="list-end">已到底部</view>
+  </block>
+</view>

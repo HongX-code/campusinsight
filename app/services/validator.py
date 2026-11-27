@@ -32,8 +32,13 @@ def _grounded(fragment: str, text: str) -> bool:
     return not head or head in _norm(text)
 
 
-def audit(result: dict, text: str, publish: str) -> dict:
-    """对一份解析结果做规则校验，返回 {passed, issues, warnings, ok}。"""
+def audit(result: dict, text: str, publish: str, title: str = "") -> dict:
+    """对一份解析结果做规则校验，返回 {passed, issues, warnings, ok}。
+
+    `title` 参与证据接地：受众（target）这类字段的依据经常就在标题里
+    ——「关于…博士研究生（专项计划）补充报名的通知」，正文通篇只提机构名。
+    不把标题纳入接地范围，正确的取值反而会被判成编造并整字段丢弃。
+    """
     passed: list[str] = []
     issues: list[str] = []
     warnings: list[str] = []
@@ -69,9 +74,10 @@ def audit(result: dict, text: str, publish: str) -> dict:
     else:
         passed.append("C4 时间跨度合理")
 
-    # C5 原文证据接地
+    # C5 原文证据接地（标题也算原文的一部分，见函数 docstring）
     ev = result.get("evidence") or {}
-    ungrounded = [k for k, v in ev.items() if v and not _grounded(str(v), text)]
+    ground_src = (text or "") + "\n" + (title or "")
+    ungrounded = [k for k, v in ev.items() if v and not _grounded(str(v), ground_src)]
     if ungrounded:
         issues.append("证据片段无法在原文定位：%s" % "、".join(ungrounded))
     else:
@@ -121,4 +127,86 @@ def audit(result: dict, text: str, publish: str) -> dict:
         else:
             passed.append("C9 文体闸门无字段泄漏")
 
+    # C10 时间轴节点接地：每个节点都必须能在原文找到日期写法与事项证据。
+    # 时间轴比单值字段危险得多——一个节点错位，学生就会照着一个不存在的日期
+    # 去准备材料。所以这里逐节点校验，定位不到的直接剔除，宁可少一个节点。
+    nodes = result.get("timeline_nodes") or []
+    if nodes:
+        kept, dropped = [], []
+        for node in nodes:
+            date_str = str(node.get("date") or "")
+            d = _iso(date_str)
+            ground = False
+            if d:
+                cands = (f"{d.year}年{d.month}月{d.day}日", d.isoformat(),
+                         f"{d.month}月{d.day}日", f"{d.year}/{d.month}/{d.day}")
+                ground = any(c in _norm(text) for c in cands)
+            if ground and _grounded(str(node.get("evidence") or ""), text):
+                kept.append(node)
+            else:
+                dropped.append(date_str or "?")
+        if dropped:
+            issues.append("时间轴 %d 个节点未能在原文定位，已剔除" % len(dropped))
+            for idx, node in enumerate(kept, start=1):
+                node["seq"] = idx
+            result["timeline_nodes"] = kept
+            stats = result.get("timeline_stats") or {}
+            stats["total"] = len(kept)
+            result["timeline_stats"] = stats
+        else:
+            passed.append("C10 时间轴节点原文接地")
+
+    # C11 表格字段可用原文回放
+    # 表格抽出来的学院名/专业名/电话，必须能在原文对应行的对应列找到。
+    # 这一条挡的是「列错位」：列数一旦对不上，抽出来的值会整体串列，
+    # 比如把「拟招生计划」的 1 当成专业代码、把专业名当成学院名。
+    # 只校验有值的字段，空字段不参与（没抽到不是错）。
+    table_report = _check_table_fields(result, text)
+    passed.extend(table_report[0])
+    issues.extend(table_report[1])
+    warnings.extend(table_report[2])
+
     return {"passed": passed, "issues": issues, "warnings": warnings, "ok": not issues}
+
+
+def _check_table_fields(result: dict, text: str) -> tuple[list[str], list[str], list[str]]:
+    """C11：表格派生字段的列序接地。
+
+    做法是「按分隔符还原每一行的列数组」，再看被采信的值是否真的落在
+    某个单元格里、且该行的列数与表头一致。不一致说明列错位或表被截断，
+    这类值比没有值更危险——学生会照着错的学院名去报到。
+    """
+    from app.services.tables import CELL_SEP, parse as parse_tables
+
+    passed: list[str] = []
+    issues: list[str] = []
+    warnings: list[str] = []
+
+    tables = parse_tables(text)
+    if not tables:
+        return passed, issues, warnings
+
+    # 所有「列数与表头一致」的行里的单元格，按值索引
+    safe_cells: set[str] = set()
+    ragged = 0
+    for table in tables:
+        width = table["columns"]
+        for row in table["rows"]:
+            if len(row) != width:
+                ragged += 1
+                continue
+            safe_cells.update(c for c in row if c)
+
+    major = [m for m in (result.get("major_requirement") or []) if m]
+    contact = result.get("contact") or {}
+    phones = [p for p in (contact.get("phone") or []) if p]
+
+    stray = [v for v in major + phones if v not in safe_cells]
+    if stray:
+        issues.append("C11 表格字段无法回放原文：%s" % "、".join(stray[:4]))
+    else:
+        passed.append("C11 表格字段可用原文回放")
+    if ragged:
+        warnings.append("C11 有 %d 行单元格数与表头不一致，已跳过" % ragged)
+    return passed, issues, warnings
+

@@ -1,0 +1,13 @@
+{
+  "name": "高校智讯",
+  "appid": "touristappid",
+  "description": "校园通知结构化与待办提醒",
+  "setting": {
+    "urlCheck": false,
+    "es6": true,
+    "postcss": true,
+    "minified": true
+  },
+  "compileType": "miniprogram",
+  "libVersion": "3.5.5"
+}

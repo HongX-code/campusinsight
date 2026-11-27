@@ -14,7 +14,7 @@ import hashlib
 import re
 
 from app.config import CATEGORIES
-from app.services import classifier, extractor, fields as fields_mod, genre, validator
+from app.services import classifier, extractor, fields as fields_mod, genre, timeline, validator
 from app.services.cache import cache
 from app.services.llm_client import LLMError, llm
 from app.services.textutil import normalize_text
@@ -135,7 +135,51 @@ def _attach_literal_fields(result: dict, fields: dict, content: str) -> dict:
     return result
 
 
-def _finalize(result: dict, content: str, publish: str) -> dict:
+def _attach_timeline(result: dict, content: str, publish: str, title: str = "") -> dict:
+    """挂载「多轨道截止时间轴」。
+
+    单值 `deadline` 只能回答「最晚什么时候」，回答不了「我是谁、我该在哪天做什么」。
+    学位授予这类通知里秋季与冬季两条时间轴并行，十几个节点各自绑定不同身份，
+    压成一个日期之后必然有一条轨道消失。节点列表与单值 deadline 并存：
+    单值继续服务「离截止还有几天」的粗粒度提醒，节点列表服务个人时间轴。
+
+    `title` 传给 timeline 定年份锚：标题写「2019年秋季」而页面发布时间标签
+    错写成 2020 年时，节点年份要跟标题走，否则同一条通知会裂成两个年份。
+    """
+    tl = timeline.extract(content, publish, title)
+    result["timeline_nodes"] = tl["nodes"]
+    result["timeline_tracks"] = tl["tracks"]
+    result["timeline_stats"] = tl["stats"]
+    result["timeline_note"] = tl["reason"] if tl["degraded"] else ""
+    return result
+
+
+def _attach_tables(result: dict, content: str) -> dict:
+    """挂载「表格结构复原」的统计与明细。
+
+    采集阶段已经用 \\x1f 保留了列边界（见 collector._table_to_text），
+    这里只负责把它读出来：有几张表、每张表几列、列语义是什么、
+    从中派生出哪些学院/专业/电话。前端与复核界面据此说明
+    「这个字段是从表格第几列拿的」，而不是让人猜它从哪冒出来。
+    """
+    from app.services import tables as tables_mod
+
+    sheet = tables_mod.extract(content or "")
+    result["table_stats"] = sheet.get("stats") or {}
+    result["table_note"] = sheet.get("reason") if sheet.get("degraded") else ""
+    # 存量正文（旧版压平、列边界已丢）不可复原，只能标出来让用户重新采集。
+    # 这个标记必须一路传到界面，否则会表现为「这条通知本来就没有表格」。
+    result["table_needs_recollect"] = bool(sheet.get("needs_recollect"))
+    # 明细只留结构，不留整表原文：正文里已经有原文，再存一份既冗余又容易不同步
+    result["table_detail"] = [
+        {"columns": t["columns"], "kinds": t["kinds"], "kind": t["kind"],
+         "rows": len(t["rows"]), "headers": t["headers"]}
+        for t in (sheet.get("tables") or [])
+    ]
+    return result
+
+
+def _finalize(result: dict, content: str, publish: str, title: str = "") -> dict:
     """解析链路的统一出口：跑规则校验，把硬异常写回复核状态。
 
     技术文档2 第 57 章「AI 负责理解，程序负责约束，原文负责证明」在这里落地：
@@ -144,7 +188,10 @@ def _finalize(result: dict, content: str, publish: str) -> dict:
     result.setdefault("degraded", False)
     result.setdefault("fallback_reason", "")
     result.setdefault("fallback_kind", "")
-    report = validator.audit(result, content, publish)
+    # 放在校验之前挂载：时间轴节点也要参与接地校验，而不是校验完再补进来
+    _attach_timeline(result, content, publish, title)
+    _attach_tables(result, content)
+    report = validator.audit(result, content, publish, title)
     if result.get("relative_note"):
         report["issues"].append(result["relative_note"])
         report["ok"] = False
@@ -183,6 +230,14 @@ def _apply_genre_gate(result: dict, info: dict) -> dict:
         "apply_method": "",
         "evidence": {},
         "deadline_kind": "",
+        # 新闻稿没有「学生该在哪天办什么」，时间轴必须一起清空；
+        # 只清 deadline 而留着节点，等于换个字段继续放假数据。
+        "timeline_nodes": [],
+        "timeline_tracks": [],
+        "timeline_stats": {},
+        # 表格统计是客观事实（原文里确实有表），新闻稿也可以保留，
+        # 但派生字段已被清空，所以这里只保留结构不要明细，避免读者误以为还有可办理内容。
+        "table_stats": result.get("table_stats") or {},
         **fields_mod.empty_fields(),
         "confidence": round(min(float(result.get("confidence") or 0.6), 0.62), 2),
         # 没有可办理字段，也就没有需要人工核对的截止日期
@@ -333,7 +388,7 @@ def analyze(title: str, content: str, publish_time: str = "", use_llm: bool | No
             reason = "未启用大模型，使用规则引擎"
         else:
             reason = ""
-        return _finalize(_rule_result(title, content, publish, reason, source_url), content, publish)
+        return _finalize(_rule_result(title, content, publish, reason, source_url), content, publish, title)
 
     # 同一内容命中缓存，避免重复计费；只缓存真正由模型产出的结果，
     # 否则一次网络抖动产生的兜底结果会锁住同一条通知 24 小时。
@@ -362,7 +417,7 @@ def analyze(title: str, content: str, publish_time: str = "", use_llm: bool | No
         result["fallback_reason"] = str(exc)[:200]
         result["fallback_kind"] = info.get("last_error_kind") or "unknown"
 
-    result = _finalize(result, content, publish)
+    result = _finalize(result, content, publish, title)
     if result.get("engine") == "llm":
         cache.set_json(cache_key, result, ttl=86400)
     return result

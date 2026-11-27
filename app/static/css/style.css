@@ -306,6 +306,11 @@ a { color: inherit; }
 .card {
   background: var(--surface); border: 1px solid var(--border-light);
   border-radius: var(--radius-lg); padding: 20px;
+  /* 关键：卡片是 grid/flex 子项，默认 min-width:auto 会取 min-content。
+     当内部出现 white-space:nowrap 的 .li-title 时，min-content 可达 480px+，
+     把 grid 轨道连同卡片一起撑出手机视口。置 0 后轨道才能收缩，标题才靠
+     .li-title 的 text-overflow:ellipsis 正常省略。 */
+  min-width: 0;
   box-shadow: 0 1px 2px rgba(15, 23, 42, .04), 0 10px 30px rgba(15, 23, 42, .05);
   transition: transform var(--duration-normal) var(--ease-standard),
               box-shadow var(--duration-normal) var(--ease-standard),
@@ -330,7 +335,8 @@ a { color: inherit; }
 }
 .hint { font-size: 12px; color: var(--text-tertiary); }
 
-.grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 16px; }
+/* minmax(0,1fr)：避免 1fr 轨道被内部 nowrap 内容的 min-content 撑破视口 */
+.grid-2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; margin-top: 16px; }
 .block-gap { margin-top: 16px; }
 
 .section-head {
@@ -1299,6 +1305,9 @@ textarea.input { height: auto; resize: vertical; line-height: 1.7; padding: 10px
 .sheet-mask.show { opacity: 1; pointer-events: auto; }
 .sheet {
   display: none; position: fixed; left: 0; right: 0; bottom: 0; z-index: 96;
+  /* 移动端 .sheet 会切成 display:flex，必须显式 column，
+     否则多个 width:100% 的 .sheet-item 横向排成一排撑出视口。 */
+  flex-direction: column;
   background: var(--surface); border-radius: 20px 20px 0 0;
   padding: 10px 16px calc(16px + env(safe-area-inset-bottom));
   transform: translateY(110%);
@@ -1393,10 +1402,16 @@ body.sheet-open { overflow: hidden; }
 
   /* 移动端补充：搜索入口、更多面板、触控尺寸与输入缩放 */
   .mobile-only { display: grid; }
-  .topbar-actions { gap: 4px; }
+  /* 顶栏动作区：min-width:0 + shrink 让它在 320px 窄屏上可收缩；
+     主按钮只留图标（文案移到 more sheet 的「录入通知」），避免把整行顶出视口。 */
+  .topbar-actions { gap: 4px; min-width: 0; flex-shrink: 1; }
   .topbar-actions .btn.ghost { display: none !important; }
-  .topbar-actions .btn.primary { height: 34px; padding: 0 12px; font-size: 12px; }
-  .icon-btn { width: 38px; height: 38px; }
+  .topbar-actions .btn.primary {
+    height: 36px; padding: 0; font-size: 0; flex: 0 0 36px; max-width: 36px;
+    overflow: hidden; justify-content: center; gap: 0;
+  }
+  .topbar-actions .btn.primary svg { flex: 0 0 16px; width: 16px; height: 16px; }
+  .icon-btn { width: 36px; height: 36px; flex: 0 0 36px; }
   .mobile-nav button { min-height: 48px; }
   .mobile-search {
     display: flex; align-items: center; gap: 6px;
@@ -1640,4 +1655,44 @@ body.sheet-open { overflow: hidden; }
 .login-foot { display: flex; justify-content: flex-end; padding: 12px 22px; border-top: 1px solid var(--border-light); background: var(--surface-soft); }
 @media (prefers-reduced-motion: reduce) {
   .role-card { transition: none; }
+}
+
+/* ---------------- 截止时间轴（多轨道节点） ----------------
+   一条通知里可能并行推进秋季与冬季两套时间表，纵向排开比塞进一个日期更接近
+   原文事实。管理节点（学院审议之类）压低存在感，避免学生把它当成自己的待办。 */
+.tl-panel { border: 1px solid var(--border-light); border-radius: var(--radius-md); background: var(--surface); padding: 14px 16px; }
+.tl-head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 12px; }
+.tl-head .tag { display: inline-flex; align-items: center; gap: 5px; }
+.tl-head .tag svg { width: 13px; height: 13px; fill: none; stroke: currentColor; stroke-width: 1.7; }
+.tl-track + .tl-track { margin-top: 14px; padding-top: 12px; border-top: 1px dashed var(--border-light); }
+.tl-track-head { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+.tl-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.tl-node {
+  display: grid; grid-template-columns: 96px 1fr auto auto; align-items: center; gap: 10px;
+  padding: 8px 10px; border-radius: 9px; background: var(--surface-soft);
+  border-left: 3px solid var(--border); font-size: 13px;
+}
+.tl-node.is-mine { border-left-color: var(--primary); background: var(--primary-soft); }
+.tl-node.is-admin { opacity: .62; }
+.tl-date { font-variant-numeric: tabular-nums; font-weight: 600; color: var(--text-secondary); }
+.tl-act { color: var(--text-primary); line-height: 1.5; }
+.tl-left { font-size: 11.5px; color: var(--text-tertiary); white-space: nowrap; }
+.tl-left.is-due { color: var(--text-tertiary); }
+@media (max-width: 720px) {
+  .tl-node { grid-template-columns: 1fr auto; row-gap: 4px; }
+  .tl-date { grid-column: 1 / -1; }
+}
+.tl-open {
+  display: inline; border: 0; background: none; padding: 0; margin-left: 6px;
+  color: var(--primary); font-size: 11.5px; cursor: pointer; text-decoration: underline;
+  text-underline-offset: 2px; font-family: inherit;
+}
+.tl-open:hover { color: var(--primary-hover); }
+
+/* 表格列分隔符：采集期保留的 \x1f 在正文里显示成淡色竖线，
+   让「学院名称 | 专业代码 | 专业名称」一眼能看出列，而不是粘成一句话。 */
+.cell-sep {
+  color: #c3cad6;
+  margin: 0 6px;
+  font-weight: 400;
 }

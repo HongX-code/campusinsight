@@ -1,42 +1,255 @@
 {
-  "generated_at": "2026-11-24 00:16:28",
+  "generated_at": "2026-11-27 11:10:14",
   "python": "3.12",
   "source": "现场执行，见 evidence 数组的 command / exit_code",
   "scale": {
-    "python_lines": 10434,
-    "frontend_lines": 3858,
-    "total_lines": 14292,
-    "scripts_lines": 3497,
-    "html_lines": 497,
-    "js_lines": 1765,
-    "css_lines": 1596,
-    "endpoints": 34,
+    "python_lines": 16353,
+    "frontend_lines": 4629,
+    "total_lines": 20982,
+    "scripts_lines": 5407,
+    "html_lines": 633,
+    "js_lines": 2298,
+    "css_lines": 1698,
+    "endpoints": 49,
     "docs_md": 21,
-    "screenshots": 20,
-    "views": 7
+    "screenshots": 24,
+    "views": 9
   },
   "checks": {
-    "smoke_passed": 143,
-    "smoke_failed": 1,
-    "mutation_detected": 0,
+    "smoke_passed": 259,
+    "smoke_failed": 0,
+    "mutation_detected": 11,
     "mutation_total": 11,
-    "mutation_baseline_ok": false,
+    "mutation_baseline_ok": true,
     "gate_stages": 9,
-    "gate_passed": 0,
-    "verify_items": 0,
+    "gate_passed": 9,
+    "verify_items": 44,
     "verify_failed": 0,
     "verify_skipped": 0,
-    "prompts": 0,
-    "skeleton": 0,
-    "http_ok": 0,
+    "prompts": 11,
+    "skeleton": 18,
+    "http_ok": 8,
     "http_total": 8
   },
-  "evidence": [],
+  "evidence": [
+    {
+      "id": "E1",
+      "name": "端到端业务自检",
+      "command": "python tests/test_smoke.py",
+      "exit_code": 0,
+      "key": "259 项通过 / 0 失败",
+      "level": "L1",
+      "note": "离线可跑，独立临时数据库，不污染演示数据"
+    },
+    {
+      "id": "E2",
+      "name": "自检变异检出率",
+      "command": "python scripts/mutation_audit.py --json",
+      "exit_code": 0,
+      "key": "11/11 组缺陷被检出",
+      "level": "L3",
+      "note": "临时副本注入真实业务缺陷，主工程只读；基线失败时不采信检出率"
+    },
+    {
+      "id": "E3",
+      "name": "构建与质量门禁",
+      "command": "python scripts/ci_gate.py",
+      "exit_code": 0,
+      "key": "9/9 阶段",
+      "level": "L1",
+      "note": "失败即停，不吞退出码"
+    },
+    {
+      "id": "E4",
+      "name": "交付件口径体检",
+      "command": "python scripts/codearts_tools.py verify --strict",
+      "exit_code": 0,
+      "key": "44 项 / 失败 0 / 跳过 0",
+      "level": "L2",
+      "note": "verify --strict：含旧值行级扫描、端点数硬核对；缺依赖导致的 SKIP 直接判失败"
+    },
+    {
+      "id": "E5",
+      "name": "提示词单一数据源",
+      "command": "python scripts/codearts_tools.py split --check",
+      "exit_code": 0,
+      "key": "11 份逐字一致",
+      "level": "L2",
+      "note": "主文档拆分，禁止双份手工维护"
+    },
+    {
+      "id": "E6",
+      "name": "提交骨架完整性",
+      "command": "python scripts/codearts_tools.py bootstrap --check",
+      "exit_code": 0,
+      "key": "18 个文件齐全",
+      "level": "L2",
+      "note": "幂等，不覆盖已填内容"
+    },
+    {
+      "id": "E7",
+      "name": "实测指标回灌",
+      "command": "python scripts/sync_metrics.py",
+      "exit_code": 0,
+      "key": "共同步 14 处",
+      "level": "L2",
+      "note": "benchmark.md 为性能数据源；规模口径由 scale_sync.py 单独回灌"
+    },
+    {
+      "id": "E8",
+      "name": "启动前环境体检",
+      "command": "python run.py --check",
+      "exit_code": 0,
+      "key": "通过",
+      "level": "L1",
+      "note": "版本 / 依赖 / 端口 / 数据库 / 页面资源"
+    },
+    {
+      "id": "E9",
+      "name": "本地 HTTP 端点巡检",
+      "command": "python run.py 后逐路径 HTTP GET",
+      "exit_code": 0,
+      "key": "8/8 返回 200",
+      "level": "L1",
+      "note": "/ 200；/api/health 200；/api/notices?size=5 200；/api/dashboard/stats 200；/api/users 200；/api/ai/status 200；/docs 200；/static/js/app.js 200"
+    }
+  ],
   "boundaries": [
-    "华为云 RDS for MySQL / DCS for Redis / MaaS 的真实连通截图与耗时",
-    "公网部署、域名访问与并发压测结果",
-    "CodeArts 实操会话导出与七类过程截图（当前为方案、工具与空骨架）",
+    "华为云 RDS for MySQL / DCS for Redis / MaaS 的真实开通与连通（当前仅 ECS/EIP/VPC 已部署，运行态为 SQLite + 规则引擎；Terraform 定义与代码适配已就绪但实测待补）",
+    "域名访问与公网并发压测结果（ECS 公网 IP 访问已验证，域名与压测未做）",
+    "CodeArts 客户端会话导出与七类编号过程截图（当前有 auto-deploy 真实排错记录与云上截图，但非客户端会话导出，仍属待补齐）",
     "人工阅读对照实验（因此材料不写任何效率提升百分比）",
     "Android / HarmonyOS 真机安装为应用、断网离线壳表现与两档视口真机截图（桌面浏览器巡检已通过，但不替代真机结论；见 docs/deployment.md 第 7.5 节清单）"
+  ],
+  "mutation_items": [
+    {
+      "id": "M1",
+      "label": "日期容错放宽（脏日期重新流入）",
+      "detected": true,
+      "exit_code": 1,
+      "passed": 254,
+      "failed": 1,
+      "triggered": [
+        "日期工具：非法字符串安全返回 None "
+      ]
+    },
+    {
+      "id": "M2",
+      "label": "规则校验恒通过（C1—C11 形同虚设）",
+      "detected": true,
+      "exit_code": 1,
+      "passed": 254,
+      "failed": 1,
+      "triggered": [
+        "规则校验拦截『截止早于发布』 ['截止日期 2026-01-01 早于发布时间 2026-11-06', '截止日期 2026-01-01 未能在原文定位，已置空待复核']"
+      ]
+    },
+    {
+      "id": "M3",
+      "label": "硬条件冲突不再判暂不符合",
+      "detected": true,
+      "exit_code": 1,
+      "passed": 251,
+      "failed": 4,
+      "triggered": [
+        "研究生对本科生限定通知判为暂不符合 match",
+        "专业硬条件冲突判暂不符合 ",
+        "短前缀不造成专业假命中（信息管理 vs 电子信息） "
+      ]
+    },
+    {
+      "id": "M4",
+      "label": "删除通知不清理个人待办",
+      "detected": true,
+      "exit_code": 1,
+      "passed": 253,
+      "failed": 2,
+      "triggered": [
+        "删除通知后无僵尸待办 [{'id': 2, 'user_id': 1, 'notice_id': 5, 'status': 'todo', 'remind_time': '', 'note': '', 'notice_title': '', 'deadline': None}, {'id': 1, 'user_id': 1, 'notice_id': 1, 'status': 'done', 'remind_time': '', 'note': '', 'notice_title': '关于举办2026年数学建模竞赛的通知', 'deadline': '2026-11-20'}]",
+        "数据库层无孤儿待办 "
+      ]
+    },
+    {
+      "id": "M5",
+      "label": "问答 top_k 不透传",
+      "detected": true,
+      "exit_code": 1,
+      "passed": 254,
+      "failed": 1,
+      "triggered": [
+        "问答 top_k 参数生效 top_k=1 -> 3 / top_k=3 -> 3"
+      ]
+    },
+    {
+      "id": "M6",
+      "label": "人工修正不再校验日期格式",
+      "detected": true,
+      "exit_code": 1,
+      "passed": 251,
+      "failed": 4,
+      "triggered": [
+        "人工修正拒绝非法日期 2026-11-13x {\"id\":5,\"title\":\"关于2027届校园招聘宣讲会的通知\",\"content\":\"招聘对象：2027届毕业生，专业包括计算机、电子信息等相关专业。\\n报名截止：2026年12月20日，请提交报名表至学院办公室。\\n联系人：张老师",
+        "人工修正拒绝非法日期 2026-11-1 {\"id\":5,\"title\":\"关于2027届校园招聘宣讲会的通知\",\"content\":\"招聘对象：2027届毕业生，专业包括计算机、电子信息等相关专业。\\n报名截止：2026年12月20日，请提交报名表至学院办公室。\\n联系人：张老师",
+        "人工修正拒绝非法日期 不是日期 {\"id\":5,\"title\":\"关于2027届校园招聘宣讲会的通知\",\"content\":\"招聘对象：2027届毕业生，专业包括计算机、电子信息等相关专业。\\n报名截止：2026年12月20日，请提交报名表至学院办公室。\\n联系人：张老师"
+      ]
+    },
+    {
+      "id": "M7",
+      "label": "新闻稿可加入待办 / 进入匹配",
+      "detected": true,
+      "exit_code": 1,
+      "passed": 254,
+      "failed": 1,
+      "triggered": [
+        "新闻稿不出现在个性化匹配里 {\"user\":{\"id\":1,\"name\":\"测试研究生\",\"grade\":\"研一\",\"major\":\"计算机科学与技术\",\"student_no\":\"\",\"interests\":[\"竞赛\"]},\"counts\":{\"match\":0,\"maybe\":1,\"no\":2},\"it"
+      ]
+    },
+    {
+      "id": "M8",
+      "label": "检索结果不再按 top_k 截断",
+      "detected": true,
+      "exit_code": 1,
+      "passed": 253,
+      "failed": 2,
+      "triggered": [
+        "检索按 top_k 截断（单元探针） top_k=1 -> 5 / top_k=3 -> 5",
+        "问答 top_k 参数生效 top_k=1 -> 5 / top_k=3 -> 5"
+      ]
+    },
+    {
+      "id": "M9",
+      "label": "去重指纹失效（正文不参与）",
+      "detected": true,
+      "exit_code": 1,
+      "passed": 246,
+      "failed": 9,
+      "triggered": [
+        "同标题不同正文不算重复（正文参与指纹） {\"detail\":\"该通知已存在（编号 1），无需重复录入\"}",
+        "同标题不同截止被识别为冲突 造数失败",
+        "冲突列表含严重度与字段标签 造数失败"
+      ]
+    },
+    {
+      "id": "M10",
+      "label": "自检 check() 恒真化",
+      "detected": true,
+      "exit_code": 1,
+      "passed": -1,
+      "failed": -1,
+      "triggered": [
+        "[FATAL] 自检框架异常：check() 未正确判失败（自检恒真化）"
+      ]
+    },
+    {
+      "id": "M11",
+      "label": "断言名重复导致项数虚高",
+      "detected": true,
+      "exit_code": 1,
+      "passed": -1,
+      "failed": -1,
+      "triggered": [
+        "[FATAL] 断言名重复（项数不可信）：同标题不同正文不算重复（正文参与指纹）"
+      ]
+    }
   ]
 }

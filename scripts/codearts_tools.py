@@ -715,6 +715,23 @@ def cmd_verify(strict: bool = False) -> int:
                    "scripts/evidence.py", "scripts/scale_sync.py", "scripts/mutation_audit.py",
                    "start_lan.bat", "start_lan.sh"):
         r.add("PASS" if (ROOT / script).exists() else "FAIL", script, "存在" if (ROOT / script).exists() else "缺失")
+
+    # 脱敏自检：公开仓库里不能带着真实手机号 / 个人邮箱 / 姓名 / 内网 IP。
+    # 这里用 --check 而不是直接跑脱敏：门禁只判「现在能不能发布」，
+    # 不替人改数据文件——擅自改写会让 diff 落到提交里，反而难追。
+    san = subprocess.run([sys.executable, "scripts/sanitize_data.py", "--check"],
+                         cwd=str(ROOT), capture_output=True, text=True,
+                         encoding="utf-8", errors="replace")
+    san_lines = [ln.strip() for ln in (san.stdout or "").splitlines() if ln.strip()]
+    san_ok = san.returncode == 0
+    r.add("PASS" if san_ok else "FAIL", "采集快照脱敏",
+          (san_lines[-1] if san_lines else "无输出") if san_ok
+          else "仍有个人信息残留，先跑 scripts/sanitize_data.py")
+    # 脱敏映射表一旦提交，脱敏就变成「把真号抄进代码再去替换真号」。
+    gi_text = (ROOT / ".gitignore").read_text(encoding="utf-8") if (ROOT / ".gitignore").exists() else ""
+    r.add("PASS" if ".sanitize_map.json" in gi_text else "FAIL", "脱敏映射表已忽略",
+          ".sanitize_map.json 在 .gitignore 中" if ".sanitize_map.json" in gi_text
+          else "映射表会随仓库公开，真值等于没脱敏")
     pane_text = (ROOT / "app" / "templates" / "index.html").read_text(encoding="utf-8")
     pane_ok = all(k in pane_text for k in ("qaTabs", "qaPaneLab", "btnLabRun")) \
         and "qaPaneDevice" not in pane_text
@@ -783,18 +800,19 @@ def cmd_verify(strict: bool = False) -> int:
         docx_paths = rank("*作品信息收集表*.docx", ("模板1",), ("初赛阶段",))
 
         for label, paths, reader in (
-            ("PPTX 20 页", pptx_paths, lambda p: len(Presentation(str(p)).slides)),
-            ("PDF 20 页", pdf_paths, lambda p: len(PdfReader(str(p)).pages)),
+            ("PPTX 22 页", pptx_paths, lambda p: len(Presentation(str(p)).slides)),
+            ("PDF 22 页", pdf_paths, lambda p: len(PdfReader(str(p)).pages)),
         ):
             if not paths:
                 r.add("SKIP", label, "未找到文件")
                 continue
-            path, value = choose_ok(paths, reader, 20)
+            # 2026-11 新增「关键创新（四）多轨道截止时间轴」与「关键创新（五）表格不是段落」两页，20 → 22
+            path, value = choose_ok(paths, reader, 22)
             if path is None:
                 r.add("SKIP", label, "候选文件均无法打开")
                 continue
-            r.add("PASS" if value == 20 else "FAIL", label,
-                  f"{value}（期望 20）· {path.name}（候选 {len(paths)} 份）")
+            r.add("PASS" if value == 22 else "FAIL", label,
+                  f"{value}（期望 22）· {path.name}（候选 {len(paths)} 份）")
 
         # DOCX 要同时满足 16 行表格与 P0—P10 口径；多版本共存时取第一份合规的
         docx_first: tuple[Path, int, str] | None = None

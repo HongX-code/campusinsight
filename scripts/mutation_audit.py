@@ -1,4 +1,4 @@
-# -*- coding: utf-8 -*-
+﻿# -*- coding: utf-8 -*-
 """业务自检的变异测试（mutation testing）：验证「103 项」不是装饰。
 
     python scripts/mutation_audit.py            # 人类可读报告
@@ -32,7 +32,7 @@ ROOT = Path(__file__).resolve().parent.parent
 MUTATIONS: list[tuple[str, str, str, str, str]] = [
     ("M1", "日期容错放宽（脏日期重新流入）", "app/services/textutil.py",
      "if not ISO_DATETIME_RE.fullmatch(text):", "if not ISO_DATETIME_RE.match(text):"),
-    ("M2", "规则校验恒通过（C1—C9 形同虚设）", "app/services/validator.py",
+    ("M2", "规则校验恒通过（C1—C11 形同虚设）", "app/services/validator.py",
      '"ok": not issues}', '"ok": True}'),
     ("M3", "硬条件冲突不再判暂不符合", "app/services/matcher.py",
      '        level = "no"\n    elif score >= 72:', '        level = "match"\n    elif score >= 72:'),

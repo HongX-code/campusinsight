@@ -1,0 +1,22 @@
+{
+  "description": "高校智讯 · 微信小程序端（CampusInsight for WeChat）",
+  "projectname": "campusinsight-miniprogram",
+  "appid": "touristappid",
+  "compileType": "miniprogram",
+  "libVersion": "3.5.5",
+  "setting": {
+    "urlCheck": false,
+    "es6": true,
+    "enhance": true,
+    "postcss": true,
+    "minified": true,
+    "coverView": true,
+    "nodeModules": false,
+    "ignoreDevUnusedFiles": false,
+    "checkInvalidKey": true
+  },
+  "packOptions": {
+    "ignore": [],
+    "include": []
+  }
+}

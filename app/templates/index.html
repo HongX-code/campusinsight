@@ -15,6 +15,7 @@
 <link rel="apple-touch-icon" href="/static/icons/icon-192.png" />
 <title>高校智讯 CampusInsight · 让校园信息，从「看见」到「看懂」，再到「行动」</title>
 <link rel="stylesheet" href="/static/css/style.css" />
+<link rel="stylesheet" href="/static/css/mobile.css" />
 </head>
 <body>
 
@@ -43,6 +44,10 @@
   <symbol id="i-file" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2h8l4 4v16H6z"/><path d="M14 2v5h4M9 12h6M9 16h6"/></symbol>
   <symbol id="i-plus" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></symbol>
   <symbol id="i-user" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 3.6-6.5 8-6.5s8 2.5 8 6.5"/></symbol>
+<symbol id="i-mobile" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="7" y="2" width="10" height="20" rx="2.5"/><path d="M11 18.5h2"/></symbol>
+<symbol id="i-alert" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3 2.5 20h19L12 3Z"/><path d="M12 9.5v4.5"/><path d="M12 17.5h.01"/></symbol>
+<symbol id="i-calendar" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></symbol>
+<symbol id="i-wechat" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M9 3.5c-4 0-7 2.7-7 6 0 1.9 1 3.5 2.7 4.6L4 17l2.6-1.3c.7.2 1.5.3 2.4.3"/><path d="M22 14.5c0-3-2.7-5.4-6-5.4s-6 2.4-6 5.4 2.7 5.4 6 5.4c.7 0 1.4-.1 2-.3l2 1-.5-1.7c1.5-.9 2.5-2.4 2.5-4.1Z"/></symbol>
 </svg>
 
 <div class="layout">
@@ -78,6 +83,17 @@
         </button>
         <button class="nav-item" data-view="tasks" title="我的任务">
           <span class="ico"><svg><use href="#i-task"/></svg></span><span class="label">我的任务</span>
+        </button>
+      </div>
+
+      <div class="nav-group">
+        <div class="nav-group-title">多端接入</div>
+        <button class="nav-item" data-view="mobile" title="多端接入">
+          <span class="ico"><svg><use href="#i-mobile"/></svg></span><span class="label">多端接入</span>
+        </button>
+        <button class="nav-item" data-view="conflicts" title="冲突治理">
+          <span class="ico"><svg><use href="#i-alert"/></svg></span><span class="label">冲突治理</span>
+          <span class="nav-badge" id="conflictBadge" hidden>0</span>
         </button>
       </div>
 
@@ -243,6 +259,98 @@
         </div>
       </section>
 
+      <!-- ============ 多端接入 ============ -->
+      <section class="view" id="view-mobile">
+        <div class="container">
+          <div class="page-head">
+            <div>
+              <h2 class="page-title">多端接入</h2>
+              <p class="page-sub">同一套后端与用户画像，Web、PWA、微信小程序、系统日历四个入口共享数据</p>
+            </div>
+            <button class="btn ghost" id="btnRefreshMobile">
+              <svg><use href="#i-arrow"/></svg>刷新状态
+            </button>
+          </div>
+
+          <div class="kpi-row" id="mobileKpi"></div>
+
+          <div class="mobile-grid">
+            <div class="card">
+              <div class="card-head"><h2>接入矩阵</h2><span class="hint" id="mobileModeHint">加载中…</span></div>
+              <div class="platform-list" id="platformList"></div>
+            </div>
+
+            <div class="card">
+              <div class="card-head"><h2>微信小程序</h2><span class="hint">原生工程 · miniprogram/</span></div>
+              <div class="mp-body">
+                <div class="mp-steps">
+                  <div class="mp-step"><b>1</b><span>用微信开发者工具导入 <code>miniprogram/</code> 目录</span></div>
+                  <div class="mp-step"><b>2</b><span>在 <code>app.js</code> 里把 <code>BASE_URL</code> 改成本机局域网地址</span></div>
+                  <div class="mp-step"><b>3</b><span>未配 AppID 时进入游客演示模式，用 device_key 复现同一账号</span></div>
+                </div>
+                <div class="mp-config" id="mpConfig"></div>
+              </div>
+            </div>
+
+            <div class="card">
+              <div class="card-head"><h2>订阅消息</h2><span class="hint" id="pushState">-</span></div>
+              <div class="push-body" id="pushBody"></div>
+            </div>
+
+            <div class="card">
+              <div class="card-head"><h2>日历订阅</h2><span class="hint">无需推送权限</span></div>
+              <div class="cal-body">
+                <p class="hint">把截止日期同步进系统日历，重复订阅不会产生重复条目（UID 稳定）。</p>
+                <div class="cal-link">
+                  <input class="input" id="calUrl" readonly value="/api/calendar.ics" />
+                  <button class="btn ghost" id="btnCopyCal">
+                    <svg><use href="#i-calendar"/></svg>复制
+                  </button>
+                </div>
+                <div class="cal-actions">
+                  <a class="btn ghost" id="calDownload" href="/api/calendar.ics" download>
+                    <svg><use href="#i-file"/></svg>下载 .ics
+                  </a>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============ 冲突治理 ============ -->
+      <section class="view" id="view-conflicts">
+        <div class="container">
+          <div class="page-head">
+            <div>
+              <h2 class="page-title">冲突治理</h2>
+              <p class="page-sub">
+                单条通知各自解析可以全对，只有横向比对才能发现「同一件事两个截止日期」——
+                这是单来源抽取器结构上看不见的问题
+              </p>
+            </div>
+            <button class="btn primary" id="btnScanConflicts">
+              <svg><use href="#i-search"/></svg>重新扫描
+            </button>
+          </div>
+
+          <div class="kpi-row" id="conflictKpi"></div>
+
+          <div class="toolbar">
+            <div class="seg" id="conflictFilter">
+              <button class="seg-btn active" data-sev="">全部</button>
+              <button class="seg-btn" data-sev="blocker">高</button>
+              <button class="seg-btn" data-sev="warn">中</button>
+              <button class="seg-btn" data-sev="info">低</button>
+            </div>
+            <label class="chk"><input type="checkbox" id="conflictResolved" /><span>显示已裁决</span></label>
+            <span class="hint" id="conflictSummary"></span>
+          </div>
+
+          <div class="conflict-list" id="conflictList"></div>
+        </div>
+      </section>
+
       <!-- ============ 我的匹配 ============ -->
       <section class="view" id="view-match">
         <div class="container">
@@ -371,6 +479,16 @@
       <section class="view" id="view-tasks">
         <div class="container">
           <div class="task-stats" id="taskStats"></div>
+
+          <!-- 个人时间轴：一条通知里的多个节点，按本人身份筛出该办的那几条 -->
+          <div class="card" style="margin-bottom:16px">
+            <div class="card-head">
+              <h2>我的时间轴</h2>
+              <span class="hint" id="myTimelineHint">按本人年级从通知节点中筛出，学院办理的节点不会出现</span>
+            </div>
+            <div class="tl-panel" style="border:0;padding:0" id="myTimeline"></div>
+          </div>
+
           <div class="grid-2" style="margin-top:0">
             <div class="card">
               <div class="card-head"><h2>即将截止</h2><span class="hint">未来 30 天</span></div>
@@ -441,6 +559,8 @@
 <div class="sheet-mask" id="sheetMask"></div>
 <nav class="sheet" id="moreSheet" aria-label="更多功能">
   <div class="sheet-handle"></div>
+  <button class="sheet-item" data-view="mobile"><span class="ico"><svg><use href="#i-mobile"/></svg></span>多端接入</button>
+  <button class="sheet-item" data-view="conflicts"><span class="ico"><svg><use href="#i-alert"/></svg></span>冲突治理</button>
   <button class="sheet-item" data-view="dashboard"><span class="ico"><svg><use href="#i-chart"/></svg></span>数据总览</button>
   <button class="sheet-item" data-view="sources"><span class="ico"><svg><use href="#i-cloud"/></svg></span>采集中心</button>
   <button class="sheet-item" id="sheetAddNotice"><span class="ico"><svg><use href="#i-plus"/></svg></span>录入通知</button>

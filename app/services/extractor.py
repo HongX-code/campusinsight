@@ -77,6 +77,17 @@ TARGET_CANON: list[tuple[str, tuple[str, ...]]] = [
 TARGET_REJECT = ("不限", "不设", "形式", "组队", "须", "限报", "请", "如下", "提交",
                  "材料", "名额", "择优", "每人", "个人赛", "要求", "基础", "坚持", "均可参加")
 
+# 「研究生」单独出现时不能一律归成硕士研究生：
+# 实测《关于我校2026年部分博士研究生（专项计划）补充报名的通知》正文里
+# 只有「研究生院」「研究生专项计划」「研究生教育」这类机构名与项目名，
+# 不含任何身份词，却被 TARGET_CANON 的「研究生」兜成「硕士研究生」——
+# 于是这条博士专项计划通知被推给了硕士生，正是最该避免的误推。
+# 办法：先剥掉这些复合词，剩下的「研究生」才算身份。
+_RESEARCHER_COMPOUND = re.compile(
+    r"研究生(?:院|工作部|院学位办公室|培养办公室|教育|招生|培养|管理|专项计划|项目|"
+    r"创新|学术|学位|毕业|就业|国家奖学金|学业奖学金)"
+)
+
 
 def _score_context(ctx: str, pairs: list[tuple[str, float]]) -> float:
     return sum(w for kw, w in pairs if kw in ctx)
@@ -179,6 +190,9 @@ def _canon_targets(fragment: str) -> list[str]:
     frag = fragment
     # 先把带"研究生"后缀的具体层次折叠，避免"博士研究生"同时命中"研究生"
     frag = frag.replace("博士研究生", "博士").replace("硕士研究生", "硕士")
+    # 再剥掉「研究生院」「研究生专项计划」这类机构名/项目名，
+    # 否则裸「研究生」会把它们兜成硕士研究生（详见 _RESEARCHER_COMPOUND 注释）
+    frag = _RESEARCHER_COMPOUND.sub("", frag)
     # "指导教师"是岗位要求，不代表受众含教师
     frag_for_teacher = frag.replace("指导教师", "").replace("指导老师", "")
     out: list[str] = []
@@ -194,8 +208,13 @@ def _canon_targets(fragment: str) -> list[str]:
     return out
 
 
-def _extract_target(text: str) -> tuple[list[str], str]:
-    """优先从"XX对象"这类显式片段取身份词，取不到再退回正文开头。"""
+def _extract_target(text: str, title: str = "") -> tuple[list[str], str]:
+    """优先从"XX对象"这类显式片段取身份词，取不到再退回正文开头。
+
+    标题也参与判定：校园通知的标题经常是唯一写明受众的地方
+    （「关于…博士研究生（专项计划）补充报名的通知」），正文通篇只提机构名。
+    标题的权重高于正文兜底——它经过编辑提炼，比正文前 400 字的偶然命中更可信。
+    """
     for pat in TARGET_PATTERNS:
         for m in pat.finditer(text):
             raw = m.group(1).strip(" ：:，,。")
@@ -206,6 +225,11 @@ def _extract_target(text: str) -> tuple[list[str], str]:
             canon = _canon_targets(raw)
             if canon:
                 return canon, snippet(text, m.start(), m.end(), pad=4, limit=100)
+
+    # 标题优先：标题里明确的学历层次就是这份通知的受众
+    title_canon = _canon_targets(title or "")
+    if title_canon:
+        return title_canon, (title or "")[:100]
 
     # 兜底：正文前 400 字内出现的身份词
     head = text[:400]
@@ -446,7 +470,7 @@ def extract(title: str, content: str, publish_time: str = "") -> dict:
             deadline_source = "relative"
         elif rel_note:
             relative_note = rel_note
-    target, target_ev = _extract_target(text)
+    target, target_ev = _extract_target(text, title)
     conditions, cond_ev = _extract_conditions(text, target)
     materials, mat_ev = _extract_materials(text)
     method = _extract_method(text)

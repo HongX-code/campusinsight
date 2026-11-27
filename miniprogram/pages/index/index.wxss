@@ -1,0 +1,181 @@
+.hero {
+  padding: 20rpx 8rpx 32rpx;
+}
+
+.hero-greet {
+  font-size: 44rpx;
+  font-weight: 600;
+  letter-spacing: -0.5rpx;
+}
+
+.hero-sub {
+  margin-top: 10rpx;
+  font-size: 26rpx;
+  color: var(--text-secondary);
+}
+
+.hero-dot {
+  margin: 0 10rpx;
+  color: var(--text-tertiary);
+}
+
+.hero-hint {
+  color: var(--text-tertiary);
+}
+
+.hero-mode {
+  display: inline-block;
+  margin-top: 16rpx;
+  font-size: 22rpx;
+  padding: 4rpx 18rpx;
+  border-radius: 999rpx;
+  background: var(--primary-soft);
+  color: var(--primary);
+}
+
+/* ---------------------------------------------------------- 统计四宫格 */
+.stat-grid {
+  display: flex;
+  background: var(--surface);
+  border-radius: 24rpx;
+  padding: 28rpx 0;
+  margin-bottom: 32rpx;
+  box-shadow: 0 2rpx 8rpx rgba(15, 23, 42, 0.04);
+}
+
+.stat-cell {
+  flex: 1;
+  text-align: center;
+  position: relative;
+}
+
+.stat-cell + .stat-cell::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 12rpx;
+  bottom: 12rpx;
+  width: 2rpx;
+  background: var(--border-light);
+}
+
+.stat-num {
+  font-size: 44rpx;
+  font-weight: 600;
+  color: var(--text-primary);
+  line-height: 1.2;
+}
+
+.stat-num-warn {
+  color: var(--warning);
+}
+
+.stat-label {
+  font-size: 22rpx;
+  color: var(--text-secondary);
+  margin-top: 6rpx;
+}
+
+/* ---------------------------------------------------------------- 区块头 */
+.section-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  padding: 0 8rpx 16rpx;
+}
+
+.section-title {
+  font-size: 30rpx;
+  font-weight: 600;
+}
+
+.section-more {
+  font-size: 24rpx;
+  color: var(--primary);
+}
+
+/* ---------------------------------------------------------------- 截止 */
+.agenda-card {
+  padding: 24rpx 28rpx;
+}
+
+.due {
+  flex: none;
+  margin-left: 16rpx;
+  font-size: 24rpx;
+  font-weight: 500;
+  padding: 4rpx 16rpx;
+  border-radius: 999rpx;
+  white-space: nowrap;
+}
+
+.due-normal {
+  background: var(--primary-soft);
+  color: var(--primary);
+}
+
+.due-soon {
+  background: var(--warning-soft);
+  color: var(--warning);
+}
+
+.due-urgent {
+  background: var(--danger-soft);
+  color: var(--danger);
+}
+
+.due-over {
+  background: #F3F4F6;
+  color: var(--text-tertiary);
+}
+
+.agenda-date {
+  margin-left: 16rpx;
+  font-size: 24rpx;
+  color: var(--text-secondary);
+}
+
+.agenda-kind {
+  margin-left: 12rpx;
+  font-size: 22rpx;
+  color: var(--text-tertiary);
+}
+
+/* ---------------------------------------------------------------- 推荐 */
+.match-row {
+  margin-top: 14rpx;
+  flex-wrap: wrap;
+  gap: 12rpx;
+}
+
+.match-reason {
+  margin-top: 12rpx;
+  font-size: 24rpx;
+  color: var(--text-secondary);
+  line-height: 1.55;
+}
+
+/* ---------------------------------------------------------------- 杂项 */
+.empty-mini {
+  background: var(--surface);
+  border-radius: 24rpx;
+  padding: 44rpx 28rpx;
+  margin-bottom: 32rpx;
+  text-align: center;
+  font-size: 26rpx;
+  color: var(--text-tertiary);
+}
+
+.retry-btn {
+  margin-top: 24rpx;
+}
+
+.notice-strip {
+  margin-top: 12rpx;
+  padding: 22rpx 26rpx;
+  background: var(--warning-soft);
+  border-radius: 20rpx;
+  font-size: 24rpx;
+  color: var(--warning);
+  line-height: 1.6;
+}

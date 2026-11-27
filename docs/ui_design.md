@@ -2,7 +2,7 @@
 
 > 版本：v1.0（2026-11-07）
 > 对应实现：`app/static/css/style.css`（1179 行，头部标注 Arctic Glass Design System v2.0）、`app/templates/index.html`（388 行）、`app/static/js/app.js`（1222 行）
-> 验证：`python scripts/capture.py` 一键重生成 **20 张**界面截图，逐张按第 10 节清单核对；检查项见 `docs/test_report.md` 第 7 节，符合度见 `docs/design_compliance.md`。
+> 验证：`python scripts/capture.py` 一键重生成 **24 张**界面截图，逐张按第 10 节清单核对；检查项见 `docs/test_report.md` 第 7 节，符合度见 `docs/design_compliance.md`。
 > 关联：`docs/video_script.md`（演示分镜）、`docs/architecture.md`（界面层可信性落点）。
 
 本规范是 Arctic Glass UI 全量重构后的**唯一界面口径**。所有色值、圆角、阴影、动效时长、布局尺寸、类名与视图名均逐项抄自 CSS/JS 源码，不写示意值。改样式先改 `:root` 变量，不在组件里散落十六进制常量。
@@ -108,7 +108,7 @@
 
 另有 `@media (prefers-reduced-motion: reduce)` 把动画/过渡压到 `.01ms`。
 
-## 5. 页面清单（7 个视图）
+## 5. 页面清单（9 个视图）
 
 视图由 `.nav-item[data-view]` 与 `#mobileNav` 的 `data-view` 驱动 `switchView()`，`VIEW_META` 定义顶栏标题与副标题，`state.view` 默认 `"home"`。
 
@@ -120,9 +120,11 @@
 | `sources` | 采集中心 | 信息治理 | 采集源多选、每源条数/翻页/入库后解析、抓取结果表与重复标记 | `shot-sources.png` / `shot-ingest.png`（录入弹窗） |
 | `match` | 我的匹配 | 智能工作台 | 画像卡、三档 seg 筛选、匹配度进度条、三档结论、逐条理由 | `shot-match.png` |
 | `qa` | AI 助手 | 智能工作台 | 4 个快捷问题卡、对话气泡、溯源引用、输入框 | `shot-qa.png` |
-| `tasks` | 我的任务 | 智能工作台 | 4 项统计条（待开始/进行中/已完成/30 天内截止）、即将截止、待办、状态推进 | `shot-tasks.png` |
+| `tasks` | 我的任务 | 智能工作台 | 4 项统计条（待开始/进行中/已完成/30 天内截止）、**我的时间轴（按本人身份归一的轨道节点）**、即将截止、待办、状态推进 | `shot-tasks.png` |
+| `mobile` | 多端接入 | 信息治理 | 接入端统计（Web/PWA/小程序/日历）、游客演示模式说明、微信票据有效期、订阅消息配额 | `shot-mobile-platform.png` |
+| `conflicts` | 冲突治理 | 信息治理 | 冲突总数/高优先级/中优先级/低优先级 KPI、逐条跨来源比对卡片（截止/地点/联系方式/报名方式）、四态裁决按钮 | `shot-conflicts.png` |
 
-详情抽屉（`.drawer`）与录入弹窗（`.modal`）是跨视图浮层，对应 `shot-detail.png` / `shot-fields.png` / `shot-fields-full.png` / `shot-evidence.png` / `shot-review.png` / `shot-ingest.png`。
+详情抽屉（`.drawer`）与录入弹窗（`.modal`）是跨视图浮层，对应 `shot-detail.png` / `shot-fields.png` / `shot-fields-full.png` / `shot-evidence.png` / `shot-review.png` / `shot-table.png` / `shot-table-full.png` / `shot-ingest.png`。
 
 ## 6. 组件规范
 
@@ -177,7 +179,7 @@
 | 层级 | 界面落点 | 说明 |
 | --- | --- | --- |
 | AI 结论 | 首页 `.hero`（AI 智能洞察 + 三项指标）、抽屉 `.insight-card`（AI 已完成结构化解析 + **信息可信度** `.conf-bar`）、`.tag.ai` | 只陈述系统里真实存在的量；字面事实注明「由程序从原文确定性抽取，模型不生成这些值」 |
-| 结构化信息 | 抽屉 `.field-grid` 的 14 类字段 `.field-block`、首页「可信链路」`.pipeline` 5 节点 | 字段与证据同组展示、长字段跨两列；5 节点为：公开站点采集 → AI 结构化解析 → 规则校验 C1—C9 → 原文证据绑定 → 个性化匹配与行动 |
+| 结构化信息 | 抽屉 `.field-grid` 的 14 类字段 `.field-block`、首页「可信链路」`.pipeline` 5 节点 | 字段与证据同组展示、长字段跨两列；5 节点为：公开站点采集 → AI 结构化解析 → 规则校验 C1—C11 → 原文证据绑定 → 个性化匹配与行动 |
 | 原文证据 | `.evi[data-evi]` → `.content-box mark` 黄色高亮定位；AI 助手 `.cites` 可点开对应通知 | 点证据即回到原文句子；`.check-panel` 把 `checks` 报告与人工审核三态摊开给审核人 |
 
 一句话：**AI 负责理解，程序负责约束，原文负责证明**——三级链路在界面上必须都能点得到、看得见。
@@ -206,13 +208,13 @@
 - AI 助手在移动端不自动聚焦输入框（避免一进页面就弹键盘），Enter 发送会跳过中文输入法的组词确认（`isComposing` / `keyCode 229`）；
 - 断网时固定显示 `.offline-bar`，明确「已缓存页面可浏览，AI 问答需联网」；
 - PWA：`/manifest.webmanifest`（`standalone` + 三个快捷方式）、`/sw.js`（导航网络优先、静态资源缓存优先、`/api/` 不缓存）、192 / 512 / maskable 图标；Windows、Android、HarmonyOS 浏览器都从同一份清单识别安装入口；`backdrop-filter` 全站补齐 `-webkit-` 前缀兼容移动 WebView；
-- AI 助手改为三个页签（`.qa-tabs` + `.qa-pane`）：智能问答 / AI 解析实验室 / 多端接入。解析实验室用 `.lab-field` 把每个结构化字段与它的原文证据绑在同一张卡里，`.lab-checks` 按硬异常 / 软提示 / 通过三档展示 C1—C9；降级原因复用既有 `.ans-warn`，不新增视觉语言。多端接入用 `.dev-kv` / `.dev-url` / `.dev-table` 展示安全上下文、离线壳状态、局域网地址与各平台安装入口。`.qa-pane[hidden]` 必须显式 `display:none`，否则会被 `display:flex` 顶掉导致三页同时显示；
-- 截图脚本用 `390×844` 视口：`shot-mobile.png` 用**视口截图**（非 full_page）才能拍到 fixed 底部导航，`shot-mobile-full.png` 用 `full_page` 拍完整长页。**20 张截图已按当前界面重生成；真机截图仍待验证阶段补齐。**
+- AI 助手改为三个页签（`.qa-tabs` + `.qa-pane`）：智能问答 / AI 解析实验室 / 多端接入。解析实验室用 `.lab-field` 把每个结构化字段与它的原文证据绑在同一张卡里，`.lab-checks` 按硬异常 / 软提示 / 通过三档展示 C1—C11；降级原因复用既有 `.ans-warn`，不新增视觉语言。多端接入用 `.dev-kv` / `.dev-url` / `.dev-table` 展示安全上下文、离线壳状态、局域网地址与各平台安装入口。`.qa-pane[hidden]` 必须显式 `display:none`，否则会被 `display:flex` 顶掉导致三页同时显示；
+- 截图脚本用 `390×844` 视口：`shot-mobile.png` 用**视口截图**（非 full_page）才能拍到 fixed 底部导航，`shot-mobile-full.png` 用 `full_page` 拍完整长页。**24 张截图已按当前界面重生成；真机截图仍待验证阶段补齐。**
 - 智能问答的 6 张 `.quick-card` 示例全部对应真实通知，措辞不含「适合我 / 这个」等无依据指代；
   回答底栏新增 `.ans-intent`（识别到的意图）与 `.ans-fields`（依据结构化字段条数）两个克制的胶囊标签，
   沿用 `--surface-soft` / `--success-soft` 底色，不新增强调色、不发光；`.qaMeta` 同步展示意图与含结构化字段的语料数。
 
-## 10. 截图清单（20 张，`python scripts/capture.py` 一键重生成）
+## 10. 截图清单（24 张，`python scripts/capture.py` 一键重生成）
 
 | 文件名 | 内容 | 检查要点 |
 | --- | --- | --- |
