@@ -330,6 +330,7 @@ python scripts/codearts_tools.py verify --strict  # 门禁口径：任一检查�
 python scripts/codearts_tools.py all        # 一次性跑完上述只读自检
 python scripts/ci_gate.py                   # 9 阶段构建与质量门禁（含环境体检）
 python scripts/mutation_audit.py            # 11 组业务缺陷变异测试（临时副本，主工程只读）
+python scripts/check_a11y.py                # 版式与可访问性静态自检（网格轨道 / 文字对比度 / 移动端字号与触控目标）
 python scripts/evidence.py --collect         # 现场采集证据链 + 口径回灌 + 生成单页总览
 python scripts/evidence.py --check           # 只读核对口径
 
