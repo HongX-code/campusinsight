@@ -1356,6 +1356,31 @@ def main() -> int:
         check("多端样式表可访问",
               mobile_css.status_code == 200 and ".conflict-card" in mobile_css.text,
               f"{mobile_css.status_code}")
+        # 版式稳健性与可访问性：这三类缺陷在浏览器里才看得见，
+        # 但完全能从 CSS 源码判定，所以钉进主自检，避免只有独立脚本才发现。
+        style_raw = (root_dir / "app" / "static" / "css" / "style.css").read_text(encoding="utf-8")
+        style_nc = re.sub(r"/\*.*?\*/", "", style_raw, flags=re.S)
+        mobile_nc = re.sub(r"/\*.*?\*/", "", mobile_css.text, flags=re.S)
+        bare_fr = []
+        for sheet in (style_nc, mobile_nc):
+            for m in re.finditer(r"grid-template-(?:columns|rows)\s*:\s*([^;}]+)", sheet):
+                outer = re.sub(r"minmax\([^()]*\)", "MM", m.group(1))
+                if re.search(r"(?<![\w.])[\d.]+fr\b", outer):
+                    bare_fr.append(m.group(1).strip()[:60])
+        check("网格轨道不用裸 fr（否则 nowrap 长文本会撑破布局）",
+              not bare_fr, f"裸轨道 {len(bare_fr)} 处：{bare_fr[:3]}")
+
+        bad_semantic = re.findall(
+            r"(?<![\w-])color\s*:\s*var\(--(?:success|warning|danger)\)", style_nc + mobile_nc)
+        check("语义色不直接当文字颜色用（改用 --*-text）",
+              not bad_semantic, f"命中 {len(bad_semantic)} 处")
+
+        for var, want in (("--text-primary", "#111827"), ("--text-secondary", "#4B5563"),
+                          ("--text-tertiary", "#5F6B7A")):
+            check(f"三级文字色按 WCAG AA 取值：{var}",
+                  re.search(re.escape(var) + r"\s*:\s*" + re.escape(want) + r"\b", style_nc,
+                            re.I) is not None,
+                  f"应写 {want}")
         check("小程序图标资源已就绪",
               (root_dir / "miniprogram" / "images" / "tab-home.png").exists()
               and (root_dir / "miniprogram" / "images" / "tab-mine-active.png").exists(),

@@ -49,12 +49,15 @@
 | 品牌 | `--primary-soft` / `--primary-light` | `#EFF6FF` / `#DBEAFE` | 激活导航底、Hero 渐变起点 / 聚焦描边 |
 | AI | `--accent` / `--accent-hover` | `#7C3AED` / `#6D28D9` | AI 图标、可信度条、AI 标签文字（**仅 AI**） |
 | AI | `--accent-soft` / `--accent-light` | `#F5F3FF` / `#EDE9FE` | AI 区域底色、Hero 渐变终点 / 证据竖线 |
-| 状态 | `--success` / `--success-soft` | `#16A34A` / `#F0FDF4` | 正常 / 已解析 / 符合 |
-| 状态 | `--warning` / `--warning-soft` | `#D97706` / `#FFFBEB` | 临近 / 待复核 / 可能符合 |
-| 状态 | `--danger` / `--danger-soft` | `#DC2626` / `#FEF2F2` | 紧急 / 驳回 / 删除 |
+| 状态 | `--success` / `--success-soft` | `#16A34A` / `#F0FDF4` | 正常 / 已解析 / 符合（填充、圆点、进度条） |
+| 状态 | `--warning` / `--warning-soft` | `#D97706` / `#FFFBEB` | 临近 / 待复核 / 可能符合（填充、圆点、进度条） |
+| 状态 | `--danger` / `--danger-soft` | `#DC2626` / `#FEF2F2` | 紧急 / 驳回 / 删除（填充、圆点、进度条） |
+| 状态文字 | `--success-text` / `--warning-text` / `--danger-text` | `#15803D` / `#B45309` / `#B91C1C` | 浅底上的绿色 / 橙色 / 红色文字（**文字一律用这组**） |
 | 表面 | `--bg` / `--surface` / `--surface-soft` | `#F6F8FC` / `#FFFFFF` / `#F8FAFC` | 页面底 / 卡片 / 输入框与字段单元 |
 | 边框 | `--border` / `--border-light` | `#E5E7EB` / `#EEF2F7` | 常规边框 / 轻分隔线 |
-| 文字 | `--text-primary` / `--text-secondary` / `--text-tertiary` | `#111827` / `#6B7280` / `#9CA3AF` | 标题 / 次要说明 / 提示与元信息 |
+| 文字 | `--text-primary` / `--text-secondary` / `--text-tertiary` | `#111827` / `#4B5563` / `#5F6B7A` | 标题 / 次要说明 / 提示与元信息 |
+
+> 三级文字与三个状态色都按 WCAG AA（对比度 ≥ 4.5:1）反算过：原先的 `--text-tertiary #9CA3AF` 在白底只有 2.54、`--success #16A34A` 在 `#F0FDF4` 上只有 3.15，均不达标，故加深为上述取值（在站点全部 12 种浅色底上最低 4.57）。填充与描边不受影响，继续使用 `--success/--warning/--danger`（图形对比度按 3:1 判定，原值合规）。
 
 > 类别标签另有 9 组 `[data-cat]` 配色（竞赛 `#EFF6FF`/`#1D4ED8`、奖学金 `#F5F3FF`/`#6D28D9`、科研项目、实习实践、就业信息、讲座报告、教学事务、校园活动、志愿服务），均为低饱和浅底深字，只作辅助识别。
 
@@ -208,7 +211,8 @@
 - AI 助手在移动端不自动聚焦输入框（避免一进页面就弹键盘），Enter 发送会跳过中文输入法的组词确认（`isComposing` / `keyCode 229`）；
 - 断网时固定显示 `.offline-bar`，明确「已缓存页面可浏览，AI 问答需联网」；
 - PWA：`/manifest.webmanifest`（`standalone` + 三个快捷方式）、`/sw.js`（导航网络优先、静态资源缓存优先、`/api/` 不缓存）、192 / 512 / maskable 图标；Windows、Android、HarmonyOS 浏览器都从同一份清单识别安装入口；`backdrop-filter` 全站补齐 `-webkit-` 前缀兼容移动 WebView；
-- AI 助手改为三个页签（`.qa-tabs` + `.qa-pane`）：智能问答 / AI 解析实验室 / 多端接入。解析实验室用 `.lab-field` 把每个结构化字段与它的原文证据绑在同一张卡里，`.lab-checks` 按硬异常 / 软提示 / 通过三档展示 C1—C11；降级原因复用既有 `.ans-warn`，不新增视觉语言。多端接入用 `.dev-kv` / `.dev-url` / `.dev-table` 展示安全上下文、离线壳状态、局域网地址与各平台安装入口。`.qa-pane[hidden]` 必须显式 `display:none`，否则会被 `display:flex` 顶掉导致三页同时显示；
+- AI 助手为两个页签（`.qa-tabs` + `.qa-pane`）：智能问答 / AI 解析实验室。解析实验室用 `.lab-field` 把每个结构化字段与它的原文证据绑在同一张卡里，`.lab-checks` 按硬异常 / 软提示 / 通过三档展示 C1—C11；降级原因复用既有 `.ans-warn`，不新增视觉语言。`.qa-pane[hidden]` 必须显式 `display:none`，否则会被 `display:flex` 顶掉导致两个页签同时显示；
+- 可访问性基线：三级文字与三个状态文字色均按 WCAG AA（4.5:1）取值，状态色的填充 / 描边与文字色分开（`--success` vs `--success-text`），改动色值必须同步本节 3.1 色板表；移动端正文最小 11.5px，仅 `.pipe-dot`、`.icon-btn .badge` 这类纯装饰数字允许更小；所有可点元素最短边 ≥ 32px（`.cf-open` 用上下 9px 内边距撑高、`.seg-btn` 移动端 `min-height:32px`），用 `python scripts/check_a11y.py` 复核；
 - 截图脚本用 `390×844` 视口：`shot-mobile.png` 用**视口截图**（非 full_page）才能拍到 fixed 底部导航，`shot-mobile-full.png` 用 `full_page` 拍完整长页。**24 张截图已按当前界面重生成；真机截图仍待验证阶段补齐。**
 - 智能问答的 6 张 `.quick-card` 示例全部对应真实通知，措辞不含「适合我 / 这个」等无依据指代；
   回答底栏新增 `.ans-intent`（识别到的意图）与 `.ans-fields`（依据结构化字段条数）两个克制的胶囊标签，

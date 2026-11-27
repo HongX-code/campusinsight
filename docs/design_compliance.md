@@ -16,7 +16,7 @@
 
 核对口径：以 `python tests/test_smoke.py`、`scripts/evaluate.py`、`scripts/real_audit.py`、
 `scripts/benchmark.py`、`scripts/capture.py` 的实际输出为准；界面项以 `docs/shot-*.png` 为准。
-当前规模：**51 个路由端点**（含页面 `/` 与健康检查，其中 JSON API 28 个）、约 **21900 行源码**（Python 17100 + 前端 4798，不含文档）、**277 项端到端自检全通过**、**24 张界面截图**、Markdown 文档 **22 份**（`docs/` 下 21 份 + 根目录 README；新增 `docs/codearts_prompts_advanced.md`）。另有 `codearts/` 下的 1 份资产说明、11 份独立提示词、5 份留痕模板、1 份填写示范与 1 个单页实操作战台，属**方案资产**，不计入交付文档数。
+当前规模：**51 个路由端点**（含页面 `/` 与健康检查，其中 JSON API 28 个）、约 **22100 行源码**（Python 17300 + 前端 4812，不含文档）、**282 项端到端自检全通过**、**24 张界面截图**、Markdown 文档 **22 份**（`docs/` 下 21 份 + 根目录 README；新增 `docs/codearts_prompts_advanced.md`）。另有 `codearts/` 下的 1 份资产说明、11 份独立提示词、5 份留痕模板、1 份填写示范与 1 个单页实操作战台，属**方案资产**，不计入交付文档数。
 
 ---
 

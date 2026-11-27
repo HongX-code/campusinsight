@@ -226,7 +226,7 @@
 
 .cf-compare {
   display: grid;
-  grid-template-columns: 1fr auto 1fr;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
   gap: 12px;
   align-items: stretch;
 }
@@ -260,12 +260,13 @@
 
 .cf-open {
   align-self: flex-start;
-  margin-top: 10px;
+  margin-top: 6px;
   font-size: 11.5px;
   color: var(--primary);
   background: none;
   border: none;
-  padding: 0;
+  /* 触控目标至少 32px 高：移动端 16px 的可点文字几乎点不中 */
+  padding: 9px 0;
   cursor: pointer;
   text-decoration: underline;
   text-underline-offset: 2px;
@@ -275,7 +276,7 @@
   align-self: center;
   font-size: 16px;
   font-weight: 700;
-  color: var(--danger);
+  color: var(--danger-text);
 }
 
 .cf-reason {
@@ -320,7 +321,7 @@
 
 .cf-resolved {
   font-size: 12px;
-  color: var(--success);
+  color: var(--success-text);
   font-weight: 600;
 }
 
@@ -343,11 +344,13 @@
 
 /* ---------------------------------------------------------- 响应式 */
 @media (max-width: 760px) {
-  .mobile-grid { grid-template-columns: 1fr; }
-  .cf-compare { grid-template-columns: 1fr; }
+  .mobile-grid { grid-template-columns: minmax(0, 1fr); }
+  .cf-compare { grid-template-columns: minmax(0, 1fr); }
   .cf-vs { justify-self: center; transform: rotate(90deg); }
   .page-head { flex-direction: column; align-items: stretch; }
   .page-head .btn { width: 100%; justify-content: center; }
+  /* 移动端分段筛选按钮撑到 32px 高，避免只能点到细条 */
+  .seg-btn { padding: 9px 14px; min-height: 32px; }
 }
 
 @media (prefers-reduced-motion: reduce) {
