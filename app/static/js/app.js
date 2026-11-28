@@ -1343,7 +1343,7 @@ function factorChips(factors) {
   return `<div class="match-factors">${chips.join("")}</div>`;
 }
 
-/* 推荐位：召回→排序→重排三段式接口，返回「为什么推给你」而不是只给一个分数 */
+/* 推荐位：召回→画像→融合→探索→重排五段式接口，返回「为什么推给你」而不是只给一个分数 */
 async function loadRecommendations(u) {
   const panel = $("#recoPanel");
   if (!panel) return;
@@ -1354,11 +1354,30 @@ async function loadRecommendations(u) {
     if (!items.length) { panel.hidden = true; return; }
     panel.hidden = false;
     const meta = d.meta || {};
+    const sig = meta.signals || {};
+    /* 把「用了哪几路信号」说出来，用户才知道推荐位不是随机排的 */
+    const used = [];
+    if (sig.engaged) used.push(`${sig.engaged} 条待办做画像`);
+    if (sig.semantic_centroid_terms) used.push("语义兴趣向量");
+    if (sig.peer_users) used.push(`${sig.peer_users} 位同学的行为`);
     $("#recoMeta").textContent =
-      `从 ${meta.candidate_total || 0} 条里筛出 ${meta.recalled || 0} 条候选，按七因子排序后取前 ${items.length} 条`;
+      `从 ${meta.candidate_total || 0} 条里筛出 ${meta.recalled || 0} 条候选`
+      + (used.length ? `，融合${used.join("、")}` : "，按内容与时效排序")
+      + `，取前 ${items.length} 条`;
     $("#recoList").innerHTML = items.map((r, i) => {
       const score = Math.max(5, Math.min(98, r.score));
       const cat = esc(r.category || "");
+      const sg = r.signals || {};
+      /* 只展示真正有贡献的信号，避免一排 0% 的噪声 */
+      const chips = [
+        ["内容", sg.content],
+        ["语义", sg.semantic],
+        ["偏好", sg.behavior],
+        ["同学", sg.peer],
+        ["热度", sg.popular],
+      ].filter(([, v]) => Number(v) >= 0.05)
+        .map(([k, v]) => `<span class="rsig">${k} ${Math.round(Number(v) * 100)}%</span>`)
+        .join("");
       return `<div class="reco-card" onclick="openNotice(${r.notice_id})">
         <div class="reco-rank">${i + 1}</div>
         <div class="reco-body">
@@ -1368,6 +1387,7 @@ async function loadRecommendations(u) {
             <span class="score">${score} 分</span>
           </div>
           <div class="reco-why">${esc(r.why || "")}</div>
+          ${chips ? `<div class="reco-sigs">${chips}</div>` : ""}
         </div>
       </div>`;
     }).join("");
@@ -1383,7 +1403,7 @@ async function toggleRecoExplain() {
   if (!box.dataset.loaded) {
     try {
       const d = await api("/api/recommendation-model");
-      const rows = (d.factors || []).map((f) => {
+      const bar = (f) => {
         const pct = Math.round((f.weight || 0) * 100);
         return `<div class="rx-row">
           <span class="rx-name">${esc(f.label)}</span>
@@ -1391,12 +1411,16 @@ async function toggleRecoExplain() {
           <span class="rx-pct">${pct}%</span>
           <span class="rx-desc">${esc(f.desc || "")}</span>
         </div>`;
-      }).join("");
+      };
+      const rows = (d.factors || []).map(bar).join("");
+      const fusion = (d.fusion || []).map(bar).join("");
       const pipe = (d.pipeline || []).map((s) => `<li>${esc(s)}</li>`).join("");
-      box.innerHTML = `<div class="rx-title">七因子加权模型（满分 98，${d.threshold} 分以上判为符合）</div>
-        ${rows}
-        <div class="rx-title">三段式流程</div>
+      box.innerHTML = `<div class="rx-title">五段式推荐流程</div>
         <ol class="rx-pipe">${pipe}</ol>
+        <div class="rx-title">第一步：内容七因子加权（满分 98，${d.threshold} 分以上判为符合）</div>
+        ${rows}
+        <div class="rx-title">第二步：五路信号融合（最终排序得分）</div>
+        ${fusion}
         <div class="rx-note">${esc(d.cold_start || "")}</div>`;
       box.dataset.loaded = "1";
     } catch (e) {

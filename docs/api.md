@@ -345,7 +345,7 @@ C1—C11 校验结果，全程不写入数据库。
 | DELETE | `/api/users/{id}` | 删除 |
 | GET | `/api/users/{id}/matches` | 个性化匹配，参数 `only_open=true` 只返回未截止 |
 | GET | `/api/users/{id}/recommendations` | 通知推荐位，参数 `limit`（默认 6，1—20）、`include_expired`（默认 false） |
-| GET | `/api/recommendation-model` | 推荐算法说明：七因子权重、阈值、分类上限、三段式流程、冷启动说明 |
+| GET | `/api/recommendation-model` | 推荐算法说明：七因子权重、五路融合权重、五段式流程、阈值、分类上限、探索加成、冷启动说明 |
 | GET | `/api/users/{id}/agenda` | 时间管理，参数 `days` 默认 30 |
 
 匹配返回结构（`factors` 为七因子的分项贡献，`score` 由加权和映射而来）：
@@ -381,13 +381,18 @@ C1—C11 校验结果，全程不写入数据库。
 三级结论：`match`（符合）、`maybe`（可能符合，存在未明确的资格项或兴趣不相关）、`no`（暂不符合，有硬性冲突）。
 硬冲突时分数会被一并压到阈值以下，不会出现"高分但不符合"的矛盾展示。`reasons` 每条都指向具体判断依据，前端不可省略。
 
-推荐位返回结构（`why` 是「为什么推给你」的一句话，`meta.skipped` 给出每条没推的原因计数）：
+推荐位是**五段式**编排（召回 → 画像 → 五路融合 → 探索 → MMR 重排）。`signals` 把五路信号逐项拆开，
+`fusion` 是加权结果、`explore` 是探索加成、`value` 是重排前得分；`why` 是「为什么推给你」的一句话，
+`meta.skipped` 给出每条没推的原因计数，`meta.signals` 是画像摘要：
 
 ```json
 {
   "user": { "id": 1, "name": "张同学" },
   "items": [
     { "notice_id": 42, "score": 94, "fit": 0.9569, "category": "科研项目",
+      "fusion": 0.7312, "explore": 0.0, "value": 0.7312,
+      "signals": { "content": 0.95, "semantic": 0.46, "cosine": 0.139,
+                   "behavior": 0.97, "peer": 0.0, "popular": 0.0 },
       "why": "你关注「科研项目」，且 3 天内截止",
       "notice": { "id": 42, "title": "…", "category": "科研项目" },
       "deadline": "2026-12-01",
@@ -398,9 +403,27 @@ C1—C11 校验结果，全程不写入数据库。
     "max_per_category": 2, "diversity_lambda": 0.72,
     "skipped": { "no_analysis": 0, "not_actionable": 23, "expired": 35,
                  "vetoed": 6, "duplicate": 2 },
-    "cold_start": "…", "weights": { "target": 0.28, "…": "…" }
-  }
+    "cold_start": "…", "weights": { "target": 0.28, "…": "…" },
+    "algorithm": "fusion-v2", "explore_bonus": 0.035,
+    "fusion_weights": { "content": 0.54, "semantic": 0.22, "behavior": 0.12,
+                        "peer": 0.06, "popular": 0.06 },
+    "signals": { "engaged": 4, "co_engaged": 0, "popular": 0,
+                 "semantic_centroid_terms": ["科研项目", "信息管理与信息系统"],
+                 "explored": ["志愿服务"] }
+  },
+  "signals_meta": { "engaged": 4, "co_engaged": 0, "popular": 0,
+                    "peer_users": 0, "half_life_days": 90.0 }
 }
+
+五路信号的技术实现与降级方式：
+
+| 信号 | 技术 | 说明 |
+| --- | --- | --- |
+| `content` | 七因子加权 `fit` | 适用对象与硬条件决定主导权重（0.54） |
+| `semantic` | 纯标准库 TF-IDF + 稀疏余弦 | 余弦除以参照值 0.30 截断到 1.0；无 numpy、无 embedding 服务，离线可用 |
+| `behavior` | 待办行为 90 天半衰期衰减 | 用户真正点过的比自填兴趣更可信 |
+| `peer` | 其他用户待办集合交集计数 | 同侪协同，冷启动补充 |
+| `popular` | 加入待办人数对数平滑 | 线性归一会在「只有 1 人加入」时给满分热度 |
 ```
 
 ## 7. 待办

@@ -10,8 +10,17 @@ from sqlalchemy.orm import Session, selectinload
 from app.database.connection import get_db
 from app.database.models import Notice, NoticeAnalysis, User, UserTask
 from app.serializers import TaskIn, TaskUpdate, UserIn, analysis_to_dict, task_to_dict
+from app.services.interest import build_signals, describe_signals
 from app.services.matcher import match_one
-from app.services.recommender import recommend
+from app.services.recommender import (
+    ALGORITHM_VERSION,
+    EXPLORE_BONUS,
+    FUSION_WEIGHTS,
+    explain,
+    fusion_explain,
+    pipeline,
+    recommend,
+)
 from app.services.textutil import safe_iso_date
 
 router = APIRouter(prefix="/api", tags=["用户"])
@@ -148,7 +157,7 @@ def get_recommendations(
     include_expired: bool = Query(False, description="是否包含已截止（默认不推已截止）"),
     db: Session = Depends(get_db),
 ):
-    """精准推荐位：召回 → 排序 → 重排，返回「为什么推给你」与分项依据。"""
+    """精准推荐位：召回 → 画像 → 融合 → 探索 → 重排，返回「为什么推给你」与分项依据。"""
     user = _user_dict(_get_user(db, user_id))
     notices = db.scalars(
         select(Notice).options(selectinload(Notice.analysis)).order_by(Notice.created_at.desc())
@@ -164,12 +173,16 @@ def get_recommendations(
             "title": n.title,
             "category": n.category,
             "source_url": n.source_url,
+            "content": (n.content or "")[:600],
             "publish_time": n.publish_time,
             "created_at": n.created_at,
             "analysis": analysis,
         })
 
-    result = recommend(user, rows, limit=limit, include_expired=include_expired)
+    # 行为 / 协同 / 热度信号来自待办表，现算不缓存；没有数据时自动降级为内容 + 语义两路
+    signals = build_signals(db, user_id)
+    result = recommend(user, rows, limit=limit, include_expired=include_expired,
+                       signals=signals)
     # 补上展示所需的通知摘要字段；推荐位只给前 100 字，点开再看全文
     by_id = {r["id"]: r for r in rows}
     for item in result["items"]:
@@ -184,24 +197,27 @@ def get_recommendations(
         analysis = row.get("analysis") or {}
         item["deadline"] = analysis.get("deadline")
     result["user"] = user
+    result["signals_meta"] = describe_signals(signals)
     return result
 
 
 @router.get("/recommendation-model")
 def recommendation_model():
-    """推荐模型说明：权重、因子含义与冷启动策略，界面可据此展示「算法怎么看」。"""
+    """推荐模型说明：七因子 + 四路融合 + 五段流程 + 冷启动策略，界面可据此展示「算法怎么看」。"""
     from app.services.matcher import MATCH_THRESHOLD
-    from app.services.recommender import DIVERSITY_LAMBDA, MAX_PER_CATEGORY, explain
+    from app.services.recommender import DIVERSITY_LAMBDA, MAX_PER_CATEGORY
 
     return {
+        "algorithm": ALGORITHM_VERSION,
         "factors": explain(),
+        "fusion": fusion_explain(),
+        "pipeline": pipeline(),
         "threshold": MATCH_THRESHOLD,
         "max_per_category": MAX_PER_CATEGORY,
         "diversity_lambda": DIVERSITY_LAMBDA,
-        "pipeline": ["召回：过滤新闻稿/不可办理/已截止/硬冲突",
-                     "排序：七因子加权求 fit，归一化到 5~98 分",
-                     "重排：同分类最多连续两席，保证首屏覆盖面"],
-        "cold_start": "未填写兴趣时兴趣因子取中性 0.5，由适用对象、专业限制与时效主导排序",
+        "explore_bonus": EXPLORE_BONUS,
+        "fusion_weights": dict(FUSION_WEIGHTS),
+        "cold_start": "未填写兴趣且没有待办行为时，兴趣与协同两路归零，由适用对象、专业限制、时效与全站热度主导排序",
     }
 
 

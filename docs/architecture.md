@@ -18,7 +18,9 @@
 | `services/extractor.py` | 日期打分选截止、对象归一化、条件原子化、材料条目化 |
 | `services/analyzer.py` | 解析编排、`_attach_literal_fields()` 挂载确定性字段、`_finalize()` 统一校验出口 |
 | `services/matcher.py` | 七因子加权匹配：可解释的三级结论、专业 / 年级硬条件冲突判定、分项贡献分解 |
-| `services/recommender.py` | 推荐编排：召回 → 排序 → MMR 重排，输出「为什么推给你」与跳过原因统计 |
+| `services/recommender.py` | 推荐编排：召回 → 画像 → 五路融合 → 探索 → MMR 重排，输出「为什么推给你」与四路信号分解 |
+| `services/vectorizer.py` | **语义向量**：纯标准库 TF-IDF + 稀疏余弦，无 numpy、无外部 embedding 服务，可离线降级 |
+| `services/interest.py` | **行为信号**：90 天半衰期衰减的历史偏好、同侪协同计数、全站热度，全部现算不落表 |
 | `services/genre.py` | 文体判别：事务通知 / 公示公告 / 新闻资讯 |
 | `services/fields.py` | **结构化字段契约**：`FIELD_KEYS` 六个字面事实字段的确定性抽取，逐字段附原文 evidence |
 | `services/reltime.py` | **相对时间解析**：`resolve_relative()` 结合发布时间把「本周五前」换算为 ISO 日期 |
@@ -127,20 +129,52 @@ level(match/maybe/no) + score + factors[](逐项 raw/weight/contribution/state/n
 | 通知没有发布时间 | 新鲜度 0.5 中性 | 缺失不等于陈旧，扣分等于惩罚数据不全的源 |
 | 资格够但兴趣完全不相关 | 结论降为「可能符合」 | 只关心竞赛的同学不该看到满屏"志愿服务 符合" |
 
-推荐位在匹配之上再做**三段式**编排（`services/recommender.py`）：
+推荐位在匹配之上做**五段式**编排（`services/recommender.py`），把规则匹配、语义向量、行为数据与
+探索机制融合成最终排序：
+
+```
+召回（硬门槛）→ 画像（语义质心 + 行为权重）→ 融合（五路加权）→ 探索（多样性补位）→ MMR 重排
+```
 
 | 阶段 | 做什么 | 关键约束 |
 | --- | --- | --- |
 | 召回 | 剔除未解析、新闻稿（`actionable=False`）、已截止、硬冲突、同标题重复副本 | 每个跳过项都计数进 `meta.skipped`，可解释"为什么没推这条" |
-| 排序 | 按 `fit` 降序 | 相关性优先 |
+| 画像 | 用用户待办过的通知建 TF-IDF 质心（0.7 行为 + 0.3 兴趣词），再叠加 90 天半衰期权重 | 没有行为时退化为兴趣词向量，冷启动不等同于无推荐 |
+| 融合 | 五路信号加权求和 | 权重和为 1，内容匹配占主导（0.54），见下表 |
+| 探索 | 按用户+日期的确定性种子，给兴趣之外的类目加小加成 | `EXPLORE_BONUS=0.035`，上限明确，避免"探索"变成噪声 |
 | 重排 | MMR 多样性打散 | `MAX_PER_CATEGORY=2` 硬上限；多样性折扣只用于**打破近似同分平局** |
+
+五路融合权重（`FUSION_WEIGHTS`，和为 1.00）：
+
+| 信号 | 权重 | 来源 | 为什么需要 |
+| --- | --- | --- | --- |
+| 内容匹配 `content` | 0.54 | 七因子 `fit` | 资格与硬条件始终是第一位的 |
+| 语义相近 `semantic` | 0.22 | TF-IDF 余弦 / `SEMANTIC_FULL` | 关键词写不全时，同主题通知也能被找到 |
+| 历史偏好 `behavior` | 0.12 | 待办行为的半衰期权重 | 用户真正点过的，比自填兴趣更可信 |
+| 同侪协同 `peer` | 0.06 | 其他用户待办交集 | 同专业同学在看的，通常也与你相关 |
+| 全站热度 `popular` | 0.06 | 加入待办的人数（对数平滑） | 冷启动时的兜底信号 |
+
+三处必须说清楚的实现取舍：
+
+- **语义余弦要放大再参与加权**。中文短标题的 TF-IDF 余弦普遍在 0.05~0.3，直接乘权重等于没贡献；
+  所以除以参照值 `SEMANTIC_FULL=0.30` 并截断到 1.0，同主题（实测 0.262）与异主题（0.045）才拉得开。
+- **计数类信号用对数平滑而不是线性归一**。线性归一在"全站只有 1 人加入待办"时也给满分热度，
+  会让一条冷门通知凭空拿到最高热度分；`min(1, log1p(v)/log1p(top))` 才符合"人数越多越热门"的直觉。
+- **探索要有确定性种子**。种子取 `sha256(用户id|日期|算法版本)`，同一天刷新结果不变，
+  否则用户每刷新一次推荐位就换一批，看起来像随机。
 
 多样性折扣必须远小于典型 `fit` 差距（`DIVERSITY_LAMBDA=0.72`，折扣系数 0.12）。早期版本把
 `fit × λ − 重罚` 一起算，等于把 89 分的第二条压到 76 分之后，`MAX_PER_CATEGORY` 形同虚设、
 首屏顺序也不符合直觉——这是本模块最值得记的一处调试结论。
 
 匹配与推荐都是纯规则运算，不调用模型：**结论必须可解释、可复现**。模型只负责把通知读成结构，
-判断逻辑留在代码里；没有大模型时这条链路完全可用（`llm_available=false` 时推荐照样出结果）。
+判断逻辑留在代码里；没有大模型时这条链路完全可用（`llm_available=false` 时推荐照样出结果），
+语义向量也是纯标准库实现，不依赖 numpy 或任何 embedding 服务。
+
+接口侧把分解过程全部暴露出来，便于核对：`GET /api/users/{id}/recommendations` 每项带
+`signals{content,semantic,cosine,behavior,peer,popular}` 与 `fusion/explore/value`，
+`meta` 带 `signals{engaged,co_engaged,popular,semantic_centroid_terms,explored}`、`fusion_weights`
+与 `algorithm="fusion-v2"`；`GET /api/recommendation-model` 返回七因子、五路融合、五段流程三组说明。
 
 ### 2.4 问答检索
 
@@ -462,9 +496,9 @@ CMS 常把数字、单位、日期分别包进 `<span>`，`get_text("\n")` 之�
 点击任一「原文依据」由 `jumpToEvidence()` 在通知原文中黄色高亮（`.content-box mark`）并滚动定位，
 从而在界面上形成「AI 结论 → 结构化信息 → 原文证据」的完整闭环。设计变量、组件规范与截图检查要点见 `docs/ui_design.md`。
 
-工程规模与验证口径：源码约 **22500 行**（Python 17400 + 前端 5062，其中 HTML 648 / JS 2602 / CSS 1812）、**51 个路由端点**
+工程规模与验证口径：源码约 **23100 行**（Python 18000 + 前端 5092，其中 HTML 648 / JS 2626 / CSS 1818）、**51 个路由端点**
 （含页面 `/` 与 `/api/health`，其中 JSON API 28 个）、**14 类结构化字段**（总控文档 8.2）、
-文体 3 类、`deadline_kind` 7 类；端到端自检 **306 项全通过**（`tests/test_smoke.py`，
+文体 3 类、`deadline_kind` 7 类；端到端自检 **318 项全通过**（`tests/test_smoke.py`，
 本轮新增 [13] 组「结构化字段契约、规则校验与人工审核闭环」）；界面截图 **24 张**、Markdown 文档 **22 份**（`docs/` 下 21 份 + 根目录 README；新增 `docs/codearts_prompts_advanced.md`）。
 评测语料为构造集 24 + 留出 8、真实采集集 42 份 / 7 栏目；双集指标见 `docs/evaluation_result.md`、
 `docs/holdout_result.md`，真实集分文体口径见 `docs/real_audit.md`。

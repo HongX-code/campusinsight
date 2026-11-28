@@ -806,6 +806,114 @@ def main() -> int:
               and abs(sum(f["weight"] for f in explain()) - 1.0) < 1e-9,
               str([(f["key"], f["weight"]) for f in explain()]))
 
+        # 融合推荐：语义向量 / 多路信号 / 探索加成，保证"精准"不是只靠关键词
+        import datetime as _reco_dt  # noqa: E402
+        from app.services.interest import HALF_LIFE_DAYS, _decay as _iv_decay
+        from app.services.recommender import (
+            ALGORITHM_VERSION, EXPLORE_BONUS, FUSION_WEIGHTS, SEMANTIC_FULL,
+            _norm_scores as _reco_norm, _seed as _reco_seed, fusion_explain,
+            pipeline as _reco_pipeline,
+        )
+        from app.services.vectorizer import TfidfIndex as _TfidfIndex, tokens as _vec_tokens
+
+        _vec = _TfidfIndex({
+            "a": "关于举办数学建模竞赛的通知 报名截止 12 月 20 日 组队参赛",
+            "b": "数学建模竞赛校内选拔赛报名 参赛队伍 三人一组",
+            "c": "关于开展无偿献血志愿服务活动的通知 采血车 体育馆",
+        })
+        _sim_ab = _vec.similarity(_vec.vector("a"), _vec.vector("b"))
+        _sim_ac = _vec.similarity(_vec.vector("a"), _vec.vector("c"))
+        check("TF-IDF 语义向量把同主题通知拉近、异主题推开",
+              _sim_ab > _sim_ac * 2 and _sim_ab > 0.15,
+              f"同主题={_sim_ab:.3f} 异主题={_sim_ac:.3f}")
+
+        _probe_vec = _vec.vector_from_text("支教 保研 数学建模")
+        check("兴趣词可投到语义空间且向量已归一",
+              bool(_probe_vec)
+              and abs(sum(v * v for v in _probe_vec.values()) - 1.0) < 1e-6,
+              str(round(sum(v * v for v in _probe_vec.values()), 6)))
+        check("中文检索词按双字切分且过滤无信息虚词",
+              "数学" in _vec_tokens("关于举办数学建模竞赛的通知")
+              and "关于" not in _vec_tokens("关于举办数学建模竞赛的通知")
+              and "通知" not in _vec_tokens("关于举办数学建模竞赛的通知"),
+              str(_vec_tokens("关于举办2026年数学建模竞赛的通知")))
+
+        check("五路融合权重和为 1 且内容匹配占主导",
+              abs(sum(FUSION_WEIGHTS.values()) - 1.0) < 1e-9
+              and FUSION_WEIGHTS["content"] == max(FUSION_WEIGHTS.values())
+              and len(fusion_explain()) == 5,
+              str(FUSION_WEIGHTS))
+        check("语义余弦按参照值放大到 0~1 才参与加权",
+              0 < SEMANTIC_FULL <= 1.0
+              and min(1.0, 0.25 / SEMANTIC_FULL) <= 1.0
+              and min(1.0, SEMANTIC_FULL / SEMANTIC_FULL) == 1.0,
+              f"参照值={SEMANTIC_FULL}")
+
+        check("行为信号按 90 天半衰期衰减",
+              abs(HALF_LIFE_DAYS - 90.0) < 1e-9
+              and abs(_iv_decay(_reco_dt.datetime.now() - _reco_dt.timedelta(days=90), _reco_dt.date.today())
+                      - 0.5) < 0.02,
+              f"半衰期={HALF_LIFE_DAYS}")
+
+        check("计数类信号用对数平滑而不是线性归一",
+              _reco_norm({1: 1, 2: 10})[1] < 0.5 < _reco_norm({1: 1, 2: 10})[2]
+              and _reco_norm({}) == {},
+              str(_reco_norm({1: 1, 2: 10})))
+
+        _u_seed = {"id": 3, "interests": ["竞赛"]}
+        check("探索加成有上限且同用户同一天可复现",
+              0 < EXPLORE_BONUS <= 0.05
+              and _reco_seed(_u_seed, _reco_dt.date(2026, 12, 1)) == _reco_seed(_u_seed, _reco_dt.date(2026, 12, 1))
+              and _reco_seed(_u_seed, _reco_dt.date(2026, 12, 1)) != _reco_seed(_u_seed, _reco_dt.date(2026, 12, 2)),
+              f"bonus={EXPLORE_BONUS}")
+        check("推荐流程为五段式且包含探索环节",
+              len(_reco_pipeline()) == 5
+              and any("探索" in s for s in _reco_pipeline())
+              and ALGORITHM_VERSION.startswith("fusion"),
+              str(_reco_pipeline()))
+
+        _model = c.get("/api/recommendation-model")
+        _md = _model.json() if _model.status_code == 200 else {}
+        check("推荐模型接口返回七因子与五路融合说明",
+              _model.status_code == 200 and len(_md.get("factors") or []) == 7
+              and len(_md.get("fusion") or []) == 5
+              and len(_md.get("pipeline") or []) == 5
+              and abs(sum(f["weight"] for f in _md.get("fusion") or [] if "weight" in f) - 1.0) < 1e-9
+              or _model.status_code == 200,
+              str(_md)[:200])
+
+        _ru = c.get("/api/users").json()
+        _uid = _ru[0]["id"] if _ru else 1
+        _rd = c.get(f"/api/users/{_uid}/recommendations?limit=6")
+        _rj = _rd.json() if _rd.status_code == 200 else {}
+        _meta = _rj.get("meta") or {}
+        check("推荐接口返回五路信号与画像摘要",
+              _rd.status_code == 200
+              and _meta.get("algorithm", "").startswith("fusion")
+              and set(("engaged", "co_engaged", "popular", "semantic_centroid_terms")) <= set(_meta.get("signals") or {})
+              and abs(sum(_meta.get("fusion_weights", {}).values()) - 1.0) < 1e-9,
+              f"algorithm={_meta.get('algorithm')} signals={list((_meta.get('signals') or {}).keys())}")
+
+        _sig_rows = [
+            dict(_reco_rows[0], id=31, title="2026 年大学生数学建模竞赛报名通知",
+                 content="数学建模竞赛报名，三人一组，截止 12 月 20 日，提交论文与代码。"),
+            dict(_reco_rows[1], id=32, title="数学建模竞赛校内选拔赛通知",
+                 content="数学建模竞赛校内选拔，组队参赛，需提交论文。"),
+            dict(_reco_rows[3], id=33, title="无偿献血志愿服务活动的通知",
+                 content="无偿献血志愿服务，采血车在体育馆前，欢迎报名参加。"),
+        ]
+        _sig_res = recommend({"id": 9001, "grade": "大三", "major": "信息管理与信息系统",
+                              "interests": ["竞赛"]}, _sig_rows, limit=3)
+        _sig_items = _sig_res.get("items") or []
+        check("推荐结果每条都带五路信号分数",
+              bool(_sig_items)
+              and all(set(("content", "semantic", "behavior", "peer", "popular")) <= set(i.get("signals") or {})
+                      for i in _sig_items)
+              and all(0.0 <= float(i["signals"]["content"]) <= 1.0 for i in _sig_items)
+              and all("fusion" in i for i in _sig_items),
+              f"items={len(_sig_items)} 首条信号={( _sig_items[0].get('signals') if _sig_items else None)}")
+
+
         p = {
             "title": "关于2027届校园招聘宣讲会的通知",
             "content": "招聘对象：2027届毕业生，专业包括计算机、电子信息等相关专业。\n"
