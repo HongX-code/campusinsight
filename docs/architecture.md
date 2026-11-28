@@ -18,7 +18,7 @@
 | `services/extractor.py` | 日期打分选截止、对象归一化、条件原子化、材料条目化 |
 | `services/analyzer.py` | 解析编排、`_attach_literal_fields()` 挂载确定性字段、`_finalize()` 统一校验出口 |
 | `services/matcher.py` | 七因子加权匹配：可解释的三级结论、专业 / 年级硬条件冲突判定、分项贡献分解 |
-| `services/recommender.py` | 推荐编排：召回 → 画像 → 五路融合 → 探索 → MMR 重排，输出「为什么推给你」与四路信号分解 |
+| `services/recommender.py` | 推荐编排：召回 → 画像 → 五路融合 → 探索 → MMR 重排，输出「为什么推给你」与五路信号分解 |
 | `services/vectorizer.py` | **语义向量**：纯标准库 TF-IDF + 稀疏余弦，无 numpy、无外部 embedding 服务，可离线降级 |
 | `services/interest.py` | **行为信号**：90 天半衰期衰减的历史偏好、同侪协同计数、全站热度，全部现算不落表 |
 | `services/genre.py` | 文体判别：事务通知 / 公示公告 / 新闻资讯 |

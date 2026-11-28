@@ -1362,7 +1362,7 @@ async function loadRecommendations(u) {
     if (sig.peer_users) used.push(`${sig.peer_users} 位同学的行为`);
     $("#recoMeta").textContent =
       `从 ${meta.candidate_total || 0} 条里筛出 ${meta.recalled || 0} 条候选`
-      + (used.length ? `，融合${used.join("、")}` : "，按内容与时效排序")
+      + (used.length ? `，融合 ${used.join("、")}` : "，按内容与时效排序")
       + `，取前 ${items.length} 条`;
     $("#recoList").innerHTML = items.map((r, i) => {
       const score = Math.max(5, Math.min(98, r.score));

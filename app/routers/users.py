@@ -203,7 +203,7 @@ def get_recommendations(
 
 @router.get("/recommendation-model")
 def recommendation_model():
-    """推荐模型说明：七因子 + 四路融合 + 五段流程 + 冷启动策略，界面可据此展示「算法怎么看」。"""
+    """推荐模型说明：七因子 + 五路融合 + 五段流程 + 冷启动策略，界面可据此展示「算法怎么看」。"""
     from app.services.matcher import MATCH_THRESHOLD
     from app.services.recommender import DIVERSITY_LAMBDA, MAX_PER_CATEGORY
 
