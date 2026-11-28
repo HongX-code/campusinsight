@@ -1426,6 +1426,11 @@ def main() -> int:
               'ArrowLeft' in app_src and 'ArrowRight' in app_src
               and '"Home"' in app_src and 'switchQaTab(btns[next].dataset.tab)' in app_src,
               "缺少页签键盘切换")
+        check("操作反馈区域是读屏可播报的 live region",
+              'aria-live="polite"' in page_html
+              and 'role="status"' in page_html
+              and 'id="toast"' in page_html,
+              "toast 缺少 role=status / aria-live")
         check("小程序图标资源已就绪",
               (root_dir / "miniprogram" / "images" / "tab-home.png").exists()
               and (root_dir / "miniprogram" / "images" / "tab-mine-active.png").exists(),
