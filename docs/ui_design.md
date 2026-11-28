@@ -213,6 +213,8 @@
 - PWA：`/manifest.webmanifest`（`standalone` + 三个快捷方式）、`/sw.js`（导航网络优先、静态资源缓存优先、`/api/` 不缓存）、192 / 512 / maskable 图标；Windows、Android、HarmonyOS 浏览器都从同一份清单识别安装入口；`backdrop-filter` 全站补齐 `-webkit-` 前缀兼容移动 WebView；
 - AI 助手为两个页签（`.qa-tabs` + `.qa-pane`）：智能问答 / AI 解析实验室。解析实验室用 `.lab-field` 把每个结构化字段与它的原文证据绑在同一张卡里，`.lab-checks` 按硬异常 / 软提示 / 通过三档展示 C1—C11；降级原因复用既有 `.ans-warn`，不新增视觉语言。`.qa-pane[hidden]` 必须显式 `display:none`，否则会被 `display:flex` 顶掉导致两个页签同时显示；
 - 可访问性基线：三级文字与三个状态文字色均按 WCAG AA（4.5:1）取值，状态色的填充 / 描边与文字色分开（`--success` vs `--success-text`），改动色值必须同步本节 3.1 色板表；移动端正文最小 11.5px，仅 `.pipe-dot`、`.icon-btn .badge` 这类纯装饰数字允许更小；所有可点元素最短边 ≥ 32px（`.cf-open` 用上下 9px 内边距撑高、`.seg-btn` 移动端 `min-height:32px`），用 `python scripts/check_a11y.py` 复核；
+- 对话框语义：详情抽屉、录入弹窗、登录弹窗都是 `role="dialog"` + `aria-modal="true"` + `aria-labelledby` 指向各自标题；纯图形关闭按钮一律带 `aria-label`。登录弹窗打开时把焦点交给第一张角色卡片，关闭后还给触发它的顶栏头像按钮，Esc 也只关当前这一层，避免键盘用户焦点落到 body 上丢失上下文；
+- 页签语义：`.qa-tabs` 是 `role="tablist"`，两个 `.seg-btn` 是 `role="tab"` 并用 `aria-controls` 绑定 `.qa-pane` 的 `role="tabpanel"` + `aria-labelledby`；采用漫游 tabindex（只有激活页签是 `tabindex="0"`），支持左右方向键循环、`Home`/`End` 跳到首尾；
 - 截图脚本用 `390×844` 视口：`shot-mobile.png` 用**视口截图**（非 full_page）才能拍到 fixed 底部导航，`shot-mobile-full.png` 用 `full_page` 拍完整长页。**24 张截图已按当前界面重生成；真机截图仍待验证阶段补齐。**
 - 智能问答的 6 张 `.quick-card` 示例全部对应真实通知，措辞不含「适合我 / 这个」等无依据指代；
   回答底栏新增 `.ans-intent`（识别到的意图）与 `.ans-fields`（依据结构化字段条数）两个克制的胶囊标签，

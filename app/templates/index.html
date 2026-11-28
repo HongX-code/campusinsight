@@ -397,12 +397,12 @@
           </div>
 
           <div class="seg qa-tabs" id="qaTabs" role="tablist" aria-label="AI 助手功能页签">
-            <button class="seg-btn active" data-tab="chat" role="tab" aria-selected="true">智能问答</button>
-            <button class="seg-btn" data-tab="lab" role="tab" aria-selected="false">AI 解析实验室</button>
+            <button class="seg-btn active" id="qaTabChat" data-tab="chat" role="tab" aria-selected="true" aria-controls="qaPaneChat" tabindex="0">智能问答</button>
+            <button class="seg-btn" id="qaTabLab" data-tab="lab" role="tab" aria-selected="false" aria-controls="qaPaneLab" tabindex="-1">AI 解析实验室</button>
           </div>
 
           <!-- 页签 1：智能问答 -->
-          <div class="qa-pane" id="qaPaneChat">
+          <div class="qa-pane" id="qaPaneChat" role="tabpanel" aria-labelledby="qaTabChat">
             <!-- 示例问题逐条经过自检回归：都能从已收录通知中给出带原文依据的确切答案 -->
             <div class="quick-hint"><svg><use href="#i-spark"/></svg>点击下面的常见问题，或自己在下方输入</div>
             <div class="quick-grid" id="quickQuestions">
@@ -446,7 +446,7 @@
           </div>
 
           <!-- 页签 2：AI 解析实验室（不入库，展示四层保护与字段证据） -->
-          <div class="qa-pane" id="qaPaneLab" hidden>
+          <div class="qa-pane" id="qaPaneLab" role="tabpanel" aria-labelledby="qaTabLab" hidden>
             <div class="card lab-note">
               <div class="lab-note-head">
                 <span class="ai-mark sm"><svg><use href="#i-shield"/></svg></span>

@@ -1406,6 +1406,26 @@ def main() -> int:
         check("Esc 先关登录弹窗再关抽屉（模态优先级）",
               'classList.contains("open")) { closeLogin(); return; }' in app_src,
               "Esc 处理未分优先级")
+        # 页签是 tablist：读屏靠 aria-controls/tabpanel 建立页签与面板的对应，
+        # 键盘靠漫游 tabindex + 方向键，缺任一项键盘用户就点不到第二个页签。
+        for tab_id, pane_id in (("qaTabChat", "qaPaneChat"), ("qaTabLab", "qaPaneLab")):
+            btn = re.search(r'<[^>]*id="' + tab_id + r'"[^>]*>', page_html)
+            pane = re.search(r'<[^>]*id="' + pane_id + r'"[^>]*>', page_html)
+            check(f"页签 {tab_id} 与面板 {pane_id} 建立 ARIA 对应",
+                  btn is not None and pane is not None
+                  and f'aria-controls="{pane_id}"' in btn.group(0)
+                  and 'role="tab"' in btn.group(0)
+                  and 'role="tabpanel"' in pane.group(0)
+                  and f'aria-labelledby="{tab_id}"' in pane.group(0),
+                  f"btn={btn.group(0)[:60] if btn else None}")
+        check("页签采用漫游 tabindex（只留一个 Tab 停靠点）",
+              'tabindex="0"' in page_html and 'tabindex="-1"' in page_html
+              and 'b.setAttribute("tabindex", active ? "0" : "-1")' in app_src,
+              "缺少 roving tabindex")
+        check("页签支持方向键与 Home/End 切换",
+              'ArrowLeft' in app_src and 'ArrowRight' in app_src
+              and '"Home"' in app_src and 'switchQaTab(btns[next].dataset.tab)' in app_src,
+              "缺少页签键盘切换")
         check("小程序图标资源已就绪",
               (root_dir / "miniprogram" / "images" / "tab-home.png").exists()
               and (root_dir / "miniprogram" / "images" / "tab-mine-active.png").exists(),

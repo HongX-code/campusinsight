@@ -1800,6 +1800,8 @@ function switchQaTab(name) {
     const active = b.dataset.tab === tab;
     b.classList.toggle("active", active);
     b.setAttribute("aria-selected", active ? "true" : "false");
+    // 漫游 tabindex：只有当前页签留在 Tab 序列里，方向键切换由 keydown 处理
+    b.setAttribute("tabindex", active ? "0" : "-1");
   });
   tabs.forEach((t) => {
     const pane = $("#qaPane" + t.charAt(0).toUpperCase() + t.slice(1));
@@ -2243,6 +2245,21 @@ function bindEvents() {
   $("#qaTabs").addEventListener("click", (e) => {
     const b = e.target.closest("[data-tab]");
     if (b) switchQaTab(b.dataset.tab);
+  });
+  // 页签是 tablist：左右方向键在页签间移动，Home/End 跳到首尾，这是读屏与键盘用户的默认预期
+  $("#qaTabs").addEventListener("keydown", (e) => {
+    if (!["ArrowLeft", "ArrowRight", "Home", "End"].includes(e.key)) return;
+    const btns = $$("#qaTabs .seg-btn");
+    const idx = btns.findIndex((b) => b.classList.contains("active"));
+    if (idx < 0) return;
+    e.preventDefault();
+    const last = btns.length - 1;
+    const next = e.key === "Home" ? 0
+      : e.key === "End" ? last
+        : e.key === "ArrowLeft" ? (idx === 0 ? last : idx - 1)
+          : (idx === last ? 0 : idx + 1);
+    switchQaTab(btns[next].dataset.tab);
+    btns[next].focus();
   });
   $("#labSamples").addEventListener("click", (e) => {
     const b = e.target.closest("[data-sample]");
