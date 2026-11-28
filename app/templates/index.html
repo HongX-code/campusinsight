@@ -66,7 +66,7 @@
       </div>
     </div>
 
-    <nav class="nav" id="nav">
+    <nav class="nav" id="nav" aria-label="主导航">
       <div class="nav-group">
         <div class="nav-group-title">智能工作台</div>
         <button class="nav-item active" data-view="home" title="首页">
@@ -125,7 +125,7 @@
 
       <div class="topbar-search">
         <span class="s-ico"><svg><use href="#i-search"/></svg></span>
-        <input class="top-search-input" id="globalSearch" placeholder="搜索通知、竞赛、奖学金……" autocomplete="off" />
+        <input class="top-search-input" id="globalSearch" aria-label="搜索通知、竞赛、奖学金" placeholder="搜索通知、竞赛、奖学金……" autocomplete="off" />
       </div>
 
       <div class="topbar-actions">
@@ -148,7 +148,7 @@
 
     <div class="mobile-search" id="mobileSearchBar" hidden>
       <span class="s-ico"><svg><use href="#i-search"/></svg></span>
-      <input class="top-search-input" id="mobileSearchInput" placeholder="搜索通知、竞赛、奖学金……"
+      <input class="top-search-input" id="mobileSearchInput" aria-label="搜索通知、竞赛、奖学金" placeholder="搜索通知、竞赛、奖学金……"
              autocomplete="off" enterkeyhint="search" />
       <button class="icon-btn" id="mobileSearchClose" title="关闭搜索" aria-label="关闭搜索">✕</button>
     </div>
@@ -208,15 +208,15 @@
           </div>
           <div class="chip-row" id="categoryChips"></div>
           <div class="toolbar">
-            <input class="input search" id="noticeSearch" placeholder="搜索标题或正文关键词，如：奖学金、建模、支教" />
-            <select class="input select" id="noticeCategory"><option value="">全部分类</option></select>
-            <select class="input select" id="noticeGenre">
+            <input class="input search" id="noticeSearch" aria-label="搜索标题或正文关键词" placeholder="搜索标题或正文关键词，如：奖学金、建模、支教" />
+            <select class="input select" id="noticeCategory" aria-label="按分类筛选"><option value="">全部分类</option></select>
+            <select class="input select" id="noticeGenre" aria-label="按文体筛选">
               <option value="">全部文体</option>
               <option value="notice">事务通知</option>
               <option value="publicity">公示公告</option>
               <option value="news">新闻资讯</option>
             </select>
-            <select class="input select" id="noticeReview">
+            <select class="input select" id="noticeReview" aria-label="按复核状态筛选">
               <option value="">全部状态</option>
               <option value="needs_review">待复核</option>
               <option value="reviewed">已复核</option>
@@ -302,7 +302,7 @@
               <div class="cal-body">
                 <p class="hint">把截止日期同步进系统日历，重复订阅不会产生重复条目（UID 稳定）。</p>
                 <div class="cal-link">
-                  <input class="input" id="calUrl" readonly value="/api/calendar.ics" />
+                  <input class="input" id="calUrl" aria-label="日历订阅地址" readonly value="/api/calendar.ics" />
                   <button class="btn ghost" id="btnCopyCal">
                     <svg><use href="#i-calendar"/></svg>复制
                   </button>
@@ -439,7 +439,7 @@
               </div>
             </div>
             <div class="qa-input">
-              <input class="input" id="qaInput" placeholder="输入你的问题，回车发送"
+              <input class="input" id="qaInput" aria-label="向 AI 助手提问" placeholder="输入你的问题，回车发送"
                      autocomplete="off" enterkeyhint="send" />
               <button class="btn primary" id="qaSend">发送</button>
             </div>
@@ -562,7 +562,7 @@
 </div>
 
 <!-- 移动端底部导航 -->
-<nav class="mobile-nav" id="mobileNav">
+<nav class="mobile-nav" id="mobileNav" aria-label="移动端底部导航">
   <button class="active" data-view="home"><svg><use href="#i-home"/></svg>首页</button>
   <button data-view="notices"><svg><use href="#i-notice"/></svg>通知</button>
   <button data-view="match"><svg><use href="#i-match"/></svg>匹配</button>

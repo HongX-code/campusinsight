@@ -11,6 +11,8 @@
 3. 三级文字变量的值必须等于按 AA 反算过的取值，防止有人改回浅灰。
 4. 移动端触控目标：`.cf-open` 必须有足够上下内边距、`.seg-btn` 必须有
    `min-height`，否则手机上点不中。
+5. 表单控件与地标必须有无障碍名称：只靠 `placeholder` 不算名称（输入后即消失），
+   多个 `<nav>` 需要 `aria-label` 区分——读屏只会读「导航」，用户分不清是哪一个。
 
 用法：python scripts/check_a11y.py [--quiet]
 退出码 0 = 全部通过；1 = 有失败项。
@@ -25,6 +27,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 STYLE = ROOT / "app" / "static" / "css" / "style.css"
 MOBILE = ROOT / "app" / "static" / "css" / "mobile.css"
+HTML = ROOT / "app" / "templates" / "index.html"
 
 # 按 WCAG AA（4.5:1）在站点 12 种浅色底上反算过的取值，见 docs/ui_design.md 3.1
 TEXT_EXPECT = {
@@ -51,7 +54,7 @@ def strip_comments(css: str) -> str:
 
 
 def main() -> int:
-    for p in (STYLE, MOBILE):
+    for p in (STYLE, MOBILE, HTML):
         if not p.exists():
             print(f"[FATAL] 找不到 {p}")
             return 1
@@ -167,7 +170,43 @@ def main() -> int:
     ok_seg = re.search(rf"\.seg-btn\s*\{{[^}}]*min-height\s*:\s*{TAP_FLOOR_PX}px", block_text) is not None
     check(f"分段筛选按钮移动端 min-height ≥ {TAP_FLOOR_PX}px", ok_seg, "")
 
-    # ---------- 5. 文档口径同步 ----------
+    # ---------- 5. 无障碍名称：地标与表单控件 ----------
+    # 多个 <nav> 若不命名，读屏只会念「导航」，用户无法区分主导航与底部导航。
+    page = read(HTML)
+    navs = re.findall(r"<nav\b[^>]*>", page)
+    unnamed_nav = [n[:60] for n in navs if "aria-label" not in n and "aria-labelledby" not in n]
+    check(
+        "每个 <nav> 地标都有无障碍名称",
+        bool(navs) and not unnamed_nav,
+        "；".join(unnamed_nav[:3]) or f"共 {len(navs)} 个导航地标",
+    )
+
+    # 表单控件：能被 <label> 包裹或用 for= 关联，或自带 aria-label。
+    # 只看 placeholder 的控件记为未命名——输入后 placeholder 消失，读屏就没名字了。
+    unlabeled: list[str] = []
+    for m in re.finditer(r"<(input|select|textarea)\b[^>]*>", page):
+        tag = m.group(0)
+        if 'type="checkbox"' in tag or 'type="hidden"' in tag:
+            # 复选框都由外层 <label> 包裹，单独判定成本高，交给包裹检查
+            pass
+        if "aria-label" in tag or "aria-labelledby" in tag:
+            continue
+        cid = re.search(r'id="([^"]+)"', tag)
+        if cid and re.search(rf'<label[^>]*\bfor="{re.escape(cid.group(1))}"', page):
+            continue
+        # 被 <label ...> ... </label> 包裹的情况
+        start = m.start()
+        prev_label = page.rfind("<label", 0, start)
+        if prev_label != -1 and page.find("</label>", prev_label, start) == -1:
+            continue
+        unlabeled.append(re.sub(r"\s+", " ", tag)[:70])
+    check(
+        "表单控件都有可访问名称（label 关联或 aria-label）",
+        not unlabeled,
+        "；".join(unlabeled[:4]) or "全部具备名称",
+    )
+
+    # ---------- 6. 文档口径同步 ----------
     doc = ROOT / "docs" / "ui_design.md"
     if doc.exists():
         dt = read(doc)

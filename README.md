@@ -145,7 +145,7 @@ gaoxiao-zhixun/
 │   ├── capture.py            # 一键重生成 24 张界面截图
 │   ├── codearts_tools.py     # doctor / bootstrap / split / index / verify：环境、骨架、索引、口径
 │   └── ci_gate.py            # 构建与质量门禁（9 阶段，失败即停，不吞退出码）
-├── tests/test_smoke.py       # 端到端自检（294 项，采集用例离线可跑）
+├── tests/test_smoke.py       # 端到端自检（295 项，采集用例离线可跑）
 ├── requirements.txt
 ├── .env.example
 ├── run.py                    # 本地启动器（--check 体检 / --open 自动开浏览器）
@@ -309,7 +309,7 @@ A 系列**不参与 `split`**，11 份独立提示词口径不变；两份文档
 
 ```bash
 python scripts/crawl.py --all --limit 6 --save data/real_notices.json   # 抓取真实通知（需联网）
-python tests/test_smoke.py                  # 294 项端到端自检（无需联网）
+python tests/test_smoke.py                  # 295 项端到端自检（无需联网）
 python scripts/evaluate.py                  # 开发集评测（24 份）
 python scripts/evaluate.py --set holdout    # 留出集评测（8 份，检验泛化）
 python scripts/real_audit.py                # 真实集质量审计（生成 docs/real_audit.md）
@@ -330,7 +330,7 @@ python scripts/codearts_tools.py verify --strict  # 门禁口径：任一检查�
 python scripts/codearts_tools.py all        # 一次性跑完上述只读自检
 python scripts/ci_gate.py                   # 9 阶段构建与质量门禁（含环境体检）
 python scripts/mutation_audit.py            # 11 组业务缺陷变异测试（临时副本，主工程只读）
-python scripts/check_a11y.py                # 版式与可访问性静态自检（网格轨道 / 文字对比度 / 移动端字号与触控目标）
+python scripts/check_a11y.py                # 版式与可访问性静态自检（网格轨道 / 文字对比度 / 移动端字号与触控目标 / 地标与表单控件命名）
 python scripts/evidence.py --collect         # 现场采集证据链 + 口径回灌 + 生成单页总览
 python scripts/evidence.py --check           # 只读核对口径
 

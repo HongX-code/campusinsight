@@ -1426,6 +1426,12 @@ def main() -> int:
               'ArrowLeft' in app_src and 'ArrowRight' in app_src
               and '"Home"' in app_src and 'switchQaTab(btns[next].dataset.tab)' in app_src,
               "缺少页签键盘切换")
+        check("导航地标与表单控件都有可访问名称",
+              'aria-label="主导航"' in page_html
+              and 'aria-label="移动端底部导航"' in page_html
+              and 'aria-label="搜索标题或正文关键词"' in page_html
+              and 'aria-label="向 AI 助手提问"' in page_html,
+              "缺少 aria-label 无障碍名称")
         check("导航当前视图用 aria-current 标记",
               'aria-current' in app_src and '"page"' in app_src
               and 'b.setAttribute("aria-current", "page")' in app_src,
