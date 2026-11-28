@@ -145,7 +145,7 @@ gaoxiao-zhixun/
 │   ├── capture.py            # 一键重生成 24 张界面截图
 │   ├── codearts_tools.py     # doctor / bootstrap / split / index / verify：环境、骨架、索引、口径
 │   └── ci_gate.py            # 构建与质量门禁（9 阶段，失败即停，不吞退出码）
-├── tests/test_smoke.py       # 端到端自检（302 项，采集用例离线可跑）
+├── tests/test_smoke.py       # 端到端自检（306 项，采集用例离线可跑）
 ├── requirements.txt
 ├── .env.example
 ├── run.py                    # 本地启动器（--check 体检 / --open 自动开浏览器）
@@ -309,7 +309,7 @@ A 系列**不参与 `split`**，11 份独立提示词口径不变；两份文档
 
 ```bash
 python scripts/crawl.py --all --limit 6 --save data/real_notices.json   # 抓取真实通知（需联网）
-python tests/test_smoke.py                  # 302 项端到端自检（无需联网）
+python tests/test_smoke.py                  # 306 项端到端自检（无需联网）
 python scripts/evaluate.py                  # 开发集评测（24 份）
 python scripts/evaluate.py --set holdout    # 留出集评测（8 份，检验泛化）
 python scripts/real_audit.py                # 真实集质量审计（生成 docs/real_audit.md）
@@ -611,6 +611,14 @@ python scripts/sanitize_demo_db.py --check  # 演示库同样检查
    开始抓取、导入抓取、提交录入八个入口共用同一套忙碌态——进入时按钮禁用并显示
    `spinner + 进行中文案`，`dataset.busy` 拦住重复点击，`finally` 里恢复原样。
    连点"加入待办"只会发出一个 `POST`，不会再出现第二次的 409「该通知已在待办中」。
+5. **失败态统一为「原因 + 重试」**：以前接口挂了页面只剩一句「加载失败：…」，而
+   「同一视图 15 秒内不重取」又把用户堵在这里，只能刷新整页。现在失败统一走
+   `failBlock()`——渲染带图标的失败卡片、真实错误原因和「重试」按钮，同时把该视图的
+   取数时刻清零，于是点「重试」或再点一次导航都能立刻重来。一次取数里带多个区块的
+   视图（我的任务、冲突检测、移动端）失败时会连统计条与骨架一起收掉，不留半截灰块；
+   首页四路并发全部失败时才判为整页失败，部分失败仍按原样降级并提示。
+   另外未登录时的「我的任务」与个人时间轴改成明确的登录引导，不再借用第一个角色的
+   待办冒充"你的"。
 
 骨架与忙碌态都遵守 `prefers-reduced-motion`：系统要求减少动效时，`shimmer` 与过渡
 时长被压到最低，但灰块占位本身保留——它是信息结构，不是装饰。

@@ -1,4 +1,4 @@
-﻿"""构建与质量门禁（对应 docs/codearts_prompts.md 的 P5 阶段表）。
+"""构建与质量门禁（对应 docs/codearts_prompts.md 的 P5 阶段表）。
 
 用法（在工程根目录执行）：
     python scripts/ci_gate.py               # 依次执行全部阶段，任一步失败立即中止
@@ -27,7 +27,7 @@ PY = sys.executable
 STAGES: list[tuple[str, list[str], str]] = [
     ("环境体检", [PY, "scripts/codearts_tools.py", "doctor", "--strict"], "用错解释器时立即给出可用前缀"),
     ("语法编译", [PY, "-m", "compileall", "-q", "app", "scripts", "tests"], "Python 全量编译"),
-    ("服务层自检", [PY, "tests/test_smoke.py"], "302 项端到端断言"),
+    ("服务层自检", [PY, "tests/test_smoke.py"], "306 项端到端断言"),
     ("开发集评测", [PY, "scripts/evaluate.py"], "五项指标不得退化"),
     ("留出集评测", [PY, "scripts/evaluate.py", "--set", "holdout"], "泛化能力不得退化"),
     ("真实集审计", [PY, "scripts/real_audit.py"], "42 份真实快照解析质量"),

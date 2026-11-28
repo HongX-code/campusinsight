@@ -95,7 +95,7 @@
 └───────────────────────────────────────────────────────────────────────┘
 ```
 
-- **侧栏** `.sidebar`：`248px`、白底、右侧 1px `--border-light`；`.nav-group-title` 分两组（智能工作台 / 信息治理）；`.nav-item.active` 用 `--primary-soft` 底 + 左侧 3px `--primary` 竖条。
+- **侧栏** `.sidebar`：`248px`、白底、右侧 1px `--border-light`；`.nav-group-title` 分三组（智能工作台 / 扩展能力 / 信息治理），分组标题只是导航分区、不承担页签语义；`.nav-item.active` 用 `--primary-soft` 底 + 左侧 3px `--primary` 竖条。
 - **顶栏** `.topbar`：`64px`，`rgba(255,255,255,.82)` + `backdrop-filter: saturate(180%) blur(16px)`，含全局搜索、通知铃铛、用户头像、录入按钮。
 - **内容区**：`.container { width: min(100%, var(--content-max)); margin-inline: auto; }` 最大宽 `1280px`；`.scroll` 提供 `28px 32px 56px` 内边距。
 - **间距**：8pt 节奏为主（8 / 16 / 24 / 32），局部 4pt 微调（10 / 12 / 14 / 20）；卡片内边距 18–20px，栅格 gap 12–20px。
@@ -218,6 +218,7 @@
 - 操作反馈：`#toast` 是 `role="status"` + `aria-live="polite"` + `aria-atomic="true"` 的 live region，读屏会在「已加入待办」「保存失败」这类操作后直接播报，不必再去找视觉提示；
 - 加载态：所有取数视图在等待期间渲染 `.skeleton` 灰块（`skeletonRows()` / `skeletonCards()`），不用「加载中…」这类会跳动的文字占位；灰块尺寸与最终内容同形同高，替换时不改变布局。`.sk-block` / `.sk-grid` / `.sk-list` / `.sk-stats` 只在 `@keyframes shimmer` 之后定义，未新增颜色变量；
 - 忙碌态：八个写操作入口统一走 `withBusy(btn, text, fn)`——进入即 `disabled` + `dataset.busy="1"` + `spinner` 文案，退出（含异常）在 `finally` 恢复原 HTML 与 `disabled` 状态，重复点击被 `dataset.busy` 直接短路；
+- 失败态：取数失败不再只写一句「加载失败」，统一走 `failBlock(target, e, key, retry)`——渲染 `.fail-box`（标题「这页数据暂时没取到」+ `alert` 图标 + 真实原因 + 「重试」按钮），并把该视图的 `renderedAt[key]` 清零，使「连点抑制」立即失效；`retryLoad(key)` 从 `retryHooks` 取出对应渲染函数原地重跑。同一取数里的多块容器（`#taskStats`/`#agendaList`、`#conflictKpi`/`#conflictSummary`、`#mobileKpi`）在失败时一并收掉，避免页面留着半截骨架；`withBusy` 的 `finally` 里**不得 return**，否则会把异常吞掉让调用方以为成功；
 - 动效降级：骨架的 `shimmer` 与视图切换动画都受 `prefers-reduced-motion: reduce` 约束（时长压到 .01ms、阶梯动画置 `none`），但灰块占位本身保留，因为它承担的是布局稳定性而非装饰；
 - 导航当前项：左侧 `.nav-item` 与移动端 `#mobileNav` 的当前视图除了 `.active` 视觉类，同时用 `aria-current="page"` 标记（`switchView()` 里成对设置与清除），`.active` 对辅助技术不可见，光有它读屏无法判断当前在哪一页；
 - 名称可用：页面上有主导航、移动端底部导航、更多功能三个 `<nav>`，各自带 `aria-label` 区分；搜索框、筛选下拉、AI 提问框、日历订阅地址都补了 `aria-label`——只用 `placeholder` 不算无障碍名称，输入一个字符后它就消失了，读屏随即失去控件语义；

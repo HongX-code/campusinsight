@@ -1489,6 +1489,26 @@ def main() -> int:
               all(t in app_src for t in _skeleton_views) and not _has_old_loading,
               f"骨架={all(t in app_src for t in _skeleton_views)} "
               f"残留旧占位={_has_old_loading}")
+        # 统一失败态：失败后不能只剩一句错误文字，必须能原地重试。
+        # 这类问题在浏览器里表现为「这一页白着，点导航也没反应」，
+        # 不报错、不崩，只能靠源码断言钉住。
+        _has_failbox = "function failBlock(" in app_src and "function retryLoad(" in app_src
+        _fail_clears_stamp = "if (key) state.renderedAt[key] = 0;" in app_src
+        check("失败态带重试入口且失败后允许立刻重来",
+              _has_failbox and _fail_clears_stamp and "class=\"fail-box\"" in app_src,
+              f"失败框={_has_failbox} 清零取数时刻={_fail_clears_stamp}")
+        _busy_finally = app_src.split("async function withBusy", 1)[-1].split("\n}", 1)[0]
+        check("withBusy 的 finally 不用 return 吞掉异常",
+              "if (btn.isConnected) {" in _busy_finally
+              and "if (!btn.isConnected) return;" not in _busy_finally,
+              "finally 里的 return 会让调用方误以为操作成功")
+        check("失败态覆盖全部取数视图",
+              all(f'failBlock("{t}"' in app_src or f"failBlock(box" in app_src
+                  for t in ("#homeHero", "#kpiGrid", "#noticeList", "#matchList")),
+              "仍有视图失败后只渲染纯文本，没有重试入口")
+        check("未登录时的待办与时间轴不借用第一个角色",
+              "const u = state.currentUser || state.users[0];" not in app_src,
+              "renderTasks / renderMyTimeline 仍在 fallback 到 users[0]")
         check("小程序图标资源已就绪",
               (root_dir / "miniprogram" / "images" / "tab-home.png").exists()
               and (root_dir / "miniprogram" / "images" / "tab-mine-active.png").exists(),

@@ -248,6 +248,33 @@ function engineTag(a) {
 
 const icon = (name) => `<svg aria-hidden="true" focusable="false"><use href="#i-${name}"/></svg>`;
 
+/* ---------------- 统一失败态 ----------------
+   只渲染一句「加载失败：xxx」等于把用户堵在死路上：同一视图 15 秒内不会重新取数，
+   刷新整页又太重。这里统一成「原因 + 重试按钮」，并把该视图的取数时刻清零，
+   让下一次点击导航就能真正重来。 */
+const retryHooks = new Map();
+function failBlock(target, e, key, retry) {
+  if (retry) retryHooks.set(key, retry);
+  if (key) state.renderedAt[key] = 0;
+  const targets = Array.isArray(target) ? target : [target];
+  const msg = e && e.message ? e.message : "未知错误";
+  targets.forEach((t) => {
+    const el = typeof t === "string" ? $(t) : t;
+    if (!el) return;
+    el.innerHTML = `<div class="fail-box">
+      <div class="fail-title">${icon("alert")}这页数据暂时没取到</div>
+      <div class="fail-msg">${esc(msg)}</div>
+      <button class="btn sm" onclick="retryLoad('${key || ""}')">重试</button>
+    </div>`;
+  });
+}
+function retryLoad(key) {
+  const fn = retryHooks.get(key);
+  if (!fn) return;
+  toast("正在重新读取…");
+  fn();
+}
+
 /* 统一的占位骨架：同一形状的灰块比「加载中…」文字更稳——
    内容到位时不会整块跳一下，读屏也不会读到一串临时文案。
    lines 为文字块条数，avatar/cards 控制块形状。 */
@@ -276,9 +303,13 @@ async function withBusy(btn, text, fn) {
     return await fn();
   } finally {
     delete btn.dataset.busy;
-    if (!btn.isConnected) return;
-    btn.disabled = wasDisabled;
-    btn.innerHTML = oldHTML;
+    /* 按钮可能已被重新渲染替换掉（例如列表刷新）；此时只跳过还原，
+       绝不能在这里 return——finally 里的 return 会吞掉 fn 抛出的异常，
+       让调用方以为操作成功。 */
+    if (btn.isConnected) {
+      btn.disabled = wasDisabled;
+      btn.innerHTML = oldHTML;
+    }
   }
 }
 
@@ -336,6 +367,11 @@ function switchView(name, push = true) {
   /* 同一视图的重复点击到此为止：滚动复位已经做了，再往下就是重复取数 */
   if (same) return;
 
+  /* 先记下「这一页已经开始取数」的时刻，成功失败都以它为准；
+     取数失败时由 failBlock 把它清零，于是「连点抑制」自然失效，
+     用户再点一次导航就能真正重来，不必刷新整页。 */
+  state.renderedAt[name] = Date.now();
+
   if (name === "home") renderHome();
   if (name === "dashboard") renderDashboard();
   if (name === "notices") renderNotices();
@@ -347,8 +383,6 @@ function switchView(name, push = true) {
   if (name === "qa" && state.qaTab === "chat" && window.innerWidth >= 768) {
     setTimeout(() => $("#qaInput").focus(), 60);
   }
-  /* 记下这次真正取数的时刻，供上面的重复点击判断与后续刷新窗口使用 */
-  state.renderedAt[name] = Date.now();
 }
 
 function viewFromHash() {
@@ -386,7 +420,18 @@ async function renderHome() {
     const matches = pick(1, { items: [], counts: {} });
     const agenda = pick(2, []);
     const tasks = pick(3, []);
-    if (settled.some((r) => r.status === "rejected")) {
+    const rejected = settled.filter((r) => r.status === "rejected").length;
+    if (rejected === settled.length) {
+      /* 四路全挂就别硬撑成「0 条通知」：那样用户会以为系统里真的没数据。
+         交给统一失败态，给原因和重试。 */
+      failBlock("#homeHero", new Error("接口暂时不可用，请稍后重试"), "home", renderHome);
+      $("#homeStats").innerHTML = "";
+      $("#homeOpps").innerHTML = "";
+      $("#homeDue").innerHTML = '<div class="empty">暂时无法加载近期截止事项</div>';
+      $("#bellBadge").style.display = "none";
+      return;
+    }
+    if (rejected > 0) {
       toast("部分数据暂时不可用，已显示其余可用内容", true);
     }
     state.dashboardCache = stats;
@@ -482,7 +527,9 @@ async function renderHome() {
     if (agenda.length) { bell.style.display = ""; bell.textContent = agenda.length; }
     else bell.style.display = "none";
   } catch (e) {
-    $("#homeHero").innerHTML = `<div class="card empty">加载失败：${esc(e.message)}</div>`;
+    /* 首页四块是独立取数的，能走到这里说明连汇总都没成功；
+       统一失败态带重试，别让用户只能刷新整页。 */
+    failBlock("#homeHero", e, "home", renderHome);
     $("#homeStats").innerHTML = "";
     $("#homeOpps").innerHTML = "";
     $("#homeDue").innerHTML = '<div class="empty">暂时无法加载近期截止事项</div>';
@@ -592,7 +639,7 @@ async function renderDashboard() {
         <span>已过截止：${o.overdue} 条</span>
       </div>`;
   } catch (e) {
-    $("#kpiGrid").innerHTML = `<div class="card empty">加载失败：${esc(e.message)}</div>`;
+    failBlock("#kpiGrid", e, "dashboard", renderDashboard);
   }
 }
 
@@ -673,7 +720,8 @@ async function renderNotices() {
       <span class="hint">第 ${state.page} / ${pages} 页 · 共 ${d.total} 条</span>
       <button class="btn sm" ${state.page >= pages ? "disabled" : ""} onclick="gotoPage(${state.page + 1})">下一页</button>`;
   } catch (e) {
-    $("#noticeList").innerHTML = `<div class="card empty">加载失败：${esc(e.message)}</div>`;
+    failBlock("#noticeList", e, "notices", renderNotices);
+    $("#noticePager").innerHTML = "";
   }
 }
 
@@ -705,7 +753,9 @@ async function openNotice(id) {
     state.currentNotice = n;
     renderDrawer(n);
   } catch (e) {
-    $("#drawerBody").innerHTML = `<div class="empty">加载失败：${esc(e.message)}</div>`;
+    /* 抽屉是单条取数，重试要按这条通知重开，而不是刷新整个列表 */
+    $("#drawerTitle").textContent = "读取失败";
+    failBlock("#drawerBody", e, "drawer", () => openNotice(id));
   }
 }
 
@@ -1270,7 +1320,8 @@ async function renderMatch() {
     }).join("");
     loadRecommendations(u);
   } catch (e) {
-    $("#matchList").innerHTML = `<div class="card empty">加载失败：${esc(e.message)}</div>`;
+    $("#matchSummary").textContent = "";
+    failBlock("#matchList", e, "match", renderMatch);
   }
 }
 
@@ -1350,6 +1401,8 @@ async function toggleRecoExplain() {
       box.dataset.loaded = "1";
     } catch (e) {
       box.innerHTML = `<div class="hint">说明加载失败：${esc(e.message)}</div>`;
+      /* 没拿到模型说明就不要记成已加载，否则再点也不会重试 */
+      delete box.dataset.loaded;
     }
   }
   box.hidden = false;
@@ -1548,7 +1601,9 @@ function askQuestionRetry() {
 async function renderMyTimeline() {
   const box = $("#myTimeline");
   if (!box) return;
-  const u = state.currentUser || state.users[0];
+  /* 只认当前登录角色：以前这里会 fallback 到 users[0]，
+     等于未登录时把张明的待办当成「你的」，与登录设计相矛盾。 */
+  const u = state.currentUser;
   if (!u) {
     box.innerHTML = '<div class="empty">请先点击右上角头像登录角色账号</div>';
     return;
@@ -1602,15 +1657,24 @@ async function renderMyTimeline() {
       </div>`;
     }).join("");
   } catch (e) {
-    box.innerHTML = `<div class="empty">加载失败：${esc(e.message)}</div>`;
+    /* 时间轴嵌在任务视图里，重试只重取这一块，不动上面的统计 */
+    failBlock(box, e, "tasks", renderMyTimeline);
   }
 }
 
 async function renderTasks() {
   /* 时间轴独立取数：即使待办接口失败，时间轴仍要能显示出来 */
   renderMyTimeline();
-  const u = state.currentUser || state.users[0];
-  if (!u) { $("#taskList").innerHTML = '<div class="card empty">暂无用户</div>'; return; }
+  /* 只认当前登录角色：未登录就给一句明确引导，
+     不要再借 users[0] 的待办冒充「当前用户」的。 */
+  const u = state.currentUser;
+  if (!u) {
+    $("#taskStats").innerHTML = "";
+    $("#agendaList").innerHTML = "";
+    $("#taskList").innerHTML =
+      '<div class="card empty">请先点击右上角头像登录角色账号，登录后这里会列出你的待办与截止日程。</div>';
+    return;
+  }
   /* 与其它视图同一套骨架：统计与两张列表先摆灰块，取到数据再原地替换，
      避免「空列表 → 满列表」时整片区域高度突变。 */
   $("#taskStats").innerHTML = `<div class="sk-block sk-stats" aria-hidden="true">
@@ -1655,7 +1719,11 @@ async function renderTasks() {
         </div>`).join("")
       : '<div class="empty">还没有待办，可在通知详情中点击「加入待办」</div>';
   } catch (e) {
-    $("#taskList").innerHTML = `<div class="card empty">加载失败：${esc(e.message)}</div>`;
+    /* 统计与日程是同一次取数里的两块，失败时必须一起收掉骨架，
+       否则页面上会一直挂着两排灰块，看起来像还在加载。 */
+    $("#taskStats").innerHTML = "";
+    $("#agendaList").innerHTML = "";
+    failBlock("#taskList", e, "tasks", renderTasks);
   }
 }
 
@@ -1683,7 +1751,10 @@ async function renderSources() {
     crawlState.sources.filter((s) => s.enabled).slice(0, 3).forEach((s) => crawlState.selected.add(s.id));
     renderSourceList();
   } catch (e) {
-    box.innerHTML = `<div class="empty">${esc(e.message)}</div>`;
+    /* crawlState.loaded 是「只取一次」的闸门，失败时不能置位，
+       否则重试会直接被 return 掉。 */
+    crawlState.loaded = false;
+    failBlock(box, e, "sources", renderSources);
   }
 }
 
@@ -2144,8 +2215,7 @@ async function renderMobile() {
 
     updateConflictBadge();
   } catch (e) {
-    $("#platformList").innerHTML = `<div class="empty">加载失败：${esc(e.message)}</div>`;
-    $("#pushBody").innerHTML = `<div class="empty">加载失败：${esc(e.message)}</div>`;
+    failBlock(["#mobileKpi", "#platformList", "#pushBody"], e, "mobile", renderMobile);
   }
 }
 
@@ -2237,7 +2307,10 @@ async function renderConflicts() {
 
     updateConflictBadge();
   } catch (e) {
-    $("#conflictList").innerHTML = `<div class="card empty">加载失败：${esc(e.message)}</div>`;
+    /* 冲突页顶上还有四个 KPI 卡片，失败时一并收掉，避免只留下空壳数字 */
+    $("#conflictKpi").innerHTML = "";
+    $("#conflictSummary").textContent = "";
+    failBlock("#conflictList", e, "conflicts", renderConflicts);
   }
 }
 

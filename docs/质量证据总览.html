@@ -69,12 +69,12 @@ code{background:#F1F4FA;padding:1px 5px;border-radius:4px;font-size:12px}
   <h1>高校智讯 · 质量证据总览</h1>
   <p class="sub">CampusInsight　|　每个数字来自本次执行的命令与退出码，不引用历史结论</p>
  </div>
- <div class="stamp">生成时间 2026-11-28 19:26:20<br>Python 3.12　·　数据源 docs/metrics.json<br>
+ <div class="stamp">生成时间 2026-11-28 22:54:49<br>Python 3.12　·　数据源 docs/metrics.json<br>
   一条命令复现：<code>python scripts/evidence.py --collect</code></div>
 </header>
 
 <h2><span class="idx">01</span>验证概览</h2>
-<div class="grid"><div class="card"><div class="card-label">端到端自检</div><div class="card-value">302</div><div class="card-note">项通过 · 0 失败</div><div class="card-id">E1</div></div>
+<div class="grid"><div class="card"><div class="card-label">端到端自检</div><div class="card-value">306</div><div class="card-note">项通过 · 0 失败</div><div class="card-id">E1</div></div>
 <div class="card"><div class="card-label">变异检出率</div><div class="card-value">11/11</div><div class="card-note">组缺陷全部变红</div><div class="card-id">E2</div></div>
 <div class="card"><div class="card-label">构建门禁</div><div class="card-value">9/9</div><div class="card-note">阶段 · 失败即停</div><div class="card-id">E3</div></div>
 <div class="card"><div class="card-label">交付件体检</div><div class="card-value">44</div><div class="card-note">项 · 失败 0 · 跳过 0</div><div class="card-id">E4</div></div>
@@ -87,7 +87,7 @@ code{background:#F1F4FA;padding:1px 5px;border-radius:4px;font-size:12px}
 <h2><span class="idx">02</span>证据清单</h2>
 <div class="panel"><table>
 <thead><tr><th>编号</th><th>证据</th><th>复现命令</th><th>退出码</th><th>关键结果</th><th>层级</th></tr></thead>
-<tbody><tr><td class="mono">E1</td><td>端到端业务自检</td><td class="mono small">python tests/test_smoke.py</td><td class="mono"><span class="badge ok">0</span></td><td>302 项通过 / 0 失败</td><td><span class="lv">L1</span></td></tr>
+<tbody><tr><td class="mono">E1</td><td>端到端业务自检</td><td class="mono small">python tests/test_smoke.py</td><td class="mono"><span class="badge ok">0</span></td><td>306 项通过 / 0 失败</td><td><span class="lv">L1</span></td></tr>
 <tr><td class="mono">E2</td><td>自检变异检出率</td><td class="mono small">python scripts/mutation_audit.py --json</td><td class="mono"><span class="badge ok">0</span></td><td>11/11 组缺陷被检出</td><td><span class="lv">L3</span></td></tr>
 <tr><td class="mono">E3</td><td>构建与质量门禁</td><td class="mono small">python scripts/ci_gate.py</td><td class="mono"><span class="badge ok">0</span></td><td>9/9 阶段</td><td><span class="lv">L1</span></td></tr>
 <tr><td class="mono">E4</td><td>交付件口径体检</td><td class="mono small">python scripts/codearts_tools.py verify --strict</td><td class="mono"><span class="badge ok">0</span></td><td>44 项 / 失败 0 / 跳过 0</td><td><span class="lv">L2</span></td></tr>
@@ -116,9 +116,9 @@ L3 可核验（用反向缺陷验证检查本身没失效）。</div>
 
 <h2><span class="idx">04</span>工程规模（现场统计）</h2>
 <div class="scale">
- <div><b>22402</b><span>源码合计行数</span></div>
- <div><b>17429</b><span>Python（app / scripts / tests）</span></div>
- <div><b>4973</b><span>前端（HTML 648 / JS 2529 / CSS 1796）</span></div>
+ <div><b>22511</b><span>源码合计行数</span></div>
+ <div><b>17449</b><span>Python（app / scripts / tests）</span></div>
+ <div><b>5062</b><span>前端（HTML 648 / JS 2602 / CSS 1812）</span></div>
  <div><b>51</b><span>路由端点</span></div>
  <div><b>21 + 1</b><span>Markdown 文档（docs + README）</span></div>
  <div><b>24</b><span>界面截图 / 9 个视图</span></div>

@@ -520,6 +520,22 @@ textarea.input { height: auto; resize: vertical; line-height: 1.7; padding: 10px
 @media (max-width: 767px) {
   .sk-grid { grid-template-columns: minmax(0, 1fr); }
 }
+/* 统一失败态：把「一句加载失败」换成「原因 + 重试」，重试按钮不必绕去刷新整页 */
+.fail-box {
+  display: flex; flex-direction: column; align-items: flex-start; gap: 10px;
+  padding: 20px; background: var(--surface);
+  border: 1px solid var(--border); border-radius: var(--radius-lg);
+}
+.fail-title {
+  display: flex; align-items: center; gap: 8px;
+  font-size: 14px; font-weight: 600; color: var(--text-primary);
+}
+.fail-title svg { width: 17px; height: 17px; color: var(--danger-text); }
+.fail-msg {
+  font-size: 13px; line-height: 1.65; color: var(--text-secondary);
+  word-break: break-word;
+}
+.fail-box .btn { align-self: flex-start; }
 
 /* ==========================================================================
    3. 首页 · 智能工作台

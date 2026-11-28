@@ -1,6 +1,6 @@
 # 高校智讯 · 质量证据报告
 
-> 现场采集时间：**2026-11-28 19:26:20**（Python 3.12）　|　数据来源：`docs/metrics.json`　|　复现：`python scripts/evidence.py --collect`
+> 现场采集时间：**2026-11-28 22:54:49**（Python 3.12）　|　数据来源：`docs/metrics.json`　|　复现：`python scripts/evidence.py --collect`
 
 本报告中的数字全部来自本次现场执行的退出码与标准输出，不引用历史结论；未验证事项在文末单独列出，不计入已验证范围。
 
@@ -8,7 +8,7 @@
 
 | 指标 | 现场结果 | 证据 |
 | --- | --- | --- |
-| 端到端自检 | 302 项通过 / 0 失败 | E1 |
+| 端到端自检 | 306 项通过 / 0 失败 | E1 |
 | 自检变异检出率 | 11/11 | E2 |
 | 构建门禁 | 9/9 阶段 | E3 |
 | 交付件体检 | 44 项 / 失败 0 / 跳过 0 | E4 |
@@ -21,7 +21,7 @@
 
 | 编号 | 证据 | 复现命令 | 退出码 | 关键结果 | 层级 |
 | --- | --- | --- | --- | --- | --- |
-| E1 | 端到端业务自检 | `python tests/test_smoke.py` | 0 | 302 项通过 / 0 失败 | L1 |
+| E1 | 端到端业务自检 | `python tests/test_smoke.py` | 0 | 306 项通过 / 0 失败 | L1 |
 | E2 | 自检变异检出率 | `python scripts/mutation_audit.py --json` | 0 | 11/11 组缺陷被检出 | L3 |
 | E3 | 构建与质量门禁 | `python scripts/ci_gate.py` | 0 | 9/9 阶段 | L1 |
 | E4 | 交付件口径体检 | `python scripts/codearts_tools.py verify --strict` | 0 | 44 项 / 失败 0 / 跳过 0 | L2 |
@@ -37,9 +37,9 @@
 
 | 项目 | 行数 / 数量 |
 | --- | --- |
-| Python（app + scripts + tests） | 17429 行 |
-| 前端（HTML 648 / JS 2529 / CSS 1796） | 4973 行 |
-| 合计 | 22402 行 |
+| Python（app + scripts + tests） | 17449 行 |
+| 前端（HTML 648 / JS 2602 / CSS 1812） | 5062 行 |
+| 合计 | 22511 行 |
 | 路由端点 | 51 个 |
 | Markdown 文档 | docs 下 21 份 + 根目录 README |
 | 界面截图 / 视图 | 24 张 / 9 个 |
