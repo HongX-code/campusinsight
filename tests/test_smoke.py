@@ -1441,6 +1441,16 @@ def main() -> int:
               and 'role="status"' in page_html
               and 'id="toast"' in page_html,
               "toast 缺少 role=status / aria-live")
+        # 清空 innerHTML 只清内容，容器仍有内边距与边框，会渲染成一条空白白条。
+        check("未登录时匹配页不留下空白卡片",
+              "pc.hidden = true" in app_src and "box.hidden = false" in app_src,
+              "profileCard 只清空内容未隐藏容器")
+        # sprite 图标旁边都已有文字标签，读屏不需要再念一遍「图像」。
+        _svg_tags = re.findall(r"<svg\b[^>]*>", page_html + app_src)
+        _svg_quiet = [t for t in _svg_tags if 'aria-hidden="true"' in t]
+        check("装饰性图标 SVG 全部对读屏隐藏",
+              len(_svg_tags) > 0 and len(_svg_tags) == len(_svg_quiet),
+              f"共 {len(_svg_tags)} 个 svg，其中 {len(_svg_quiet)} 个已隐藏")
         check("小程序图标资源已就绪",
               (root_dir / "miniprogram" / "images" / "tab-home.png").exists()
               and (root_dir / "miniprogram" / "images" / "tab-mine-active.png").exists(),

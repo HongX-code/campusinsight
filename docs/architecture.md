@@ -462,9 +462,9 @@ CMS 常把数字、单位、日期分别包进 `<span>`，`get_text("\n")` 之�
 点击任一「原文依据」由 `jumpToEvidence()` 在通知原文中黄色高亮（`.content-box mark`）并滚动定位，
 从而在界面上形成「AI 结论 → 结构化信息 → 原文证据」的完整闭环。设计变量、组件规范与截图检查要点见 `docs/ui_design.md`。
 
-工程规模与验证口径：源码约 **22200 行**（Python 17400 + 前端 4853，其中 HTML 648 / JS 2427 / CSS 1778）、**51 个路由端点**
+工程规模与验证口径：源码约 **22200 行**（Python 17400 + 前端 4859，其中 HTML 648 / JS 2433 / CSS 1778）、**51 个路由端点**
 （含页面 `/` 与 `/api/health`，其中 JSON API 28 个）、**14 类结构化字段**（总控文档 8.2）、
-文体 3 类、`deadline_kind` 7 类；端到端自检 **295 项全通过**（`tests/test_smoke.py`，
+文体 3 类、`deadline_kind` 7 类；端到端自检 **297 项全通过**（`tests/test_smoke.py`，
 本轮新增 [13] 组「结构化字段契约、规则校验与人工审核闭环」）；界面截图 **24 张**、Markdown 文档 **22 份**（`docs/` 下 21 份 + 根目录 README；新增 `docs/codearts_prompts_advanced.md`）。
 评测语料为构造集 24 + 留出 8、真实采集集 42 份 / 7 栏目；双集指标见 `docs/evaluation_result.md`、
 `docs/holdout_result.md`，真实集分文体口径见 `docs/real_audit.md`。

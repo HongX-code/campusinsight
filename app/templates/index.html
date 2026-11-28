@@ -20,7 +20,7 @@
 <body>
 
 <div class="offline-bar" id="offlineBar" hidden>
-  <svg><use href="#i-cloud"/></svg>
+  <svg aria-hidden="true" focusable="false"><use href="#i-cloud"/></svg>
   <span>当前处于离线状态：已缓存页面仍可浏览，解析与 AI 问答需联网。</span>
 </div>
 
@@ -70,29 +70,29 @@
       <div class="nav-group">
         <div class="nav-group-title">智能工作台</div>
         <button class="nav-item active" data-view="home" title="首页">
-          <span class="ico"><svg><use href="#i-home"/></svg></span><span class="label">首页</span>
+          <span class="ico"><svg aria-hidden="true" focusable="false"><use href="#i-home"/></svg></span><span class="label">首页</span>
         </button>
         <button class="nav-item" data-view="notices" title="通知中心">
-          <span class="ico"><svg><use href="#i-notice"/></svg></span><span class="label">通知中心</span>
+          <span class="ico"><svg aria-hidden="true" focusable="false"><use href="#i-notice"/></svg></span><span class="label">通知中心</span>
         </button>
         <button class="nav-item" data-view="match" title="我的匹配">
-          <span class="ico"><svg><use href="#i-match"/></svg></span><span class="label">我的匹配</span>
+          <span class="ico"><svg aria-hidden="true" focusable="false"><use href="#i-match"/></svg></span><span class="label">我的匹配</span>
         </button>
         <button class="nav-item" data-view="qa" title="AI 助手">
-          <span class="ico"><svg><use href="#i-spark"/></svg></span><span class="label">AI 助手</span>
+          <span class="ico"><svg aria-hidden="true" focusable="false"><use href="#i-spark"/></svg></span><span class="label">AI 助手</span>
         </button>
         <button class="nav-item" data-view="tasks" title="我的任务">
-          <span class="ico"><svg><use href="#i-task"/></svg></span><span class="label">我的任务</span>
+          <span class="ico"><svg aria-hidden="true" focusable="false"><use href="#i-task"/></svg></span><span class="label">我的任务</span>
         </button>
       </div>
 
       <div class="nav-group">
         <div class="nav-group-title">多端接入</div>
         <button class="nav-item" data-view="mobile" title="多端接入">
-          <span class="ico"><svg><use href="#i-mobile"/></svg></span><span class="label">多端接入</span>
+          <span class="ico"><svg aria-hidden="true" focusable="false"><use href="#i-mobile"/></svg></span><span class="label">多端接入</span>
         </button>
         <button class="nav-item" data-view="conflicts" title="冲突治理">
-          <span class="ico"><svg><use href="#i-alert"/></svg></span><span class="label">冲突治理</span>
+          <span class="ico"><svg aria-hidden="true" focusable="false"><use href="#i-alert"/></svg></span><span class="label">冲突治理</span>
           <span class="nav-badge" id="conflictBadge" hidden>0</span>
         </button>
       </div>
@@ -100,10 +100,10 @@
       <div class="nav-group">
         <div class="nav-group-title">信息治理</div>
         <button class="nav-item" data-view="dashboard" title="数据总览">
-          <span class="ico"><svg><use href="#i-chart"/></svg></span><span class="label">数据总览</span>
+          <span class="ico"><svg aria-hidden="true" focusable="false"><use href="#i-chart"/></svg></span><span class="label">数据总览</span>
         </button>
         <button class="nav-item" data-view="sources" title="采集中心">
-          <span class="ico"><svg><use href="#i-cloud"/></svg></span><span class="label">采集中心</span>
+          <span class="ico"><svg aria-hidden="true" focusable="false"><use href="#i-cloud"/></svg></span><span class="label">采集中心</span>
         </button>
       </div>
     </nav>
@@ -124,30 +124,30 @@
       </div>
 
       <div class="topbar-search">
-        <span class="s-ico"><svg><use href="#i-search"/></svg></span>
+        <span class="s-ico"><svg aria-hidden="true" focusable="false"><use href="#i-search"/></svg></span>
         <input class="top-search-input" id="globalSearch" aria-label="搜索通知、竞赛、奖学金" placeholder="搜索通知、竞赛、奖学金……" autocomplete="off" />
       </div>
 
       <div class="topbar-actions">
         <button class="icon-btn mobile-only" id="btnMobileSearch" title="搜索">
-          <svg><use href="#i-search"/></svg>
+          <svg aria-hidden="true" focusable="false"><use href="#i-search"/></svg>
         </button>
         <button class="icon-btn" id="btnBell" title="查看截止提醒">
-          <svg><use href="#i-bell"/></svg><span class="badge" id="bellBadge" style="display:none">0</span>
+          <svg aria-hidden="true" focusable="false"><use href="#i-bell"/></svg><span class="badge" id="bellBadge" style="display:none">0</span>
         </button>
-        <button class="icon-btn" id="btnHelp" title="使用帮助"><svg><use href="#i-help"/></svg></button>
+        <button class="icon-btn" id="btnHelp" title="使用帮助"><svg aria-hidden="true" focusable="false"><use href="#i-help"/></svg></button>
         <button class="user-chip" id="userChip" type="button" title="登录 / 切换角色账号">
           <span class="avatar-sm" id="topAvatar">·</span>
           <span class="u-name" id="topUserName">登录</span>
-          <svg class="u-caret"><use href="#i-chevron"/></svg>
+          <svg aria-hidden="true" focusable="false" class="u-caret"><use href="#i-chevron"/></svg>
         </button>
         <button class="btn ghost" id="btnBatchAnalyze">批量解析</button>
-        <button class="btn primary" id="btnAddNotice"><svg><use href="#i-plus"/></svg>录入通知</button>
+        <button class="btn primary" id="btnAddNotice"><svg aria-hidden="true" focusable="false"><use href="#i-plus"/></svg>录入通知</button>
       </div>
     </header>
 
     <div class="mobile-search" id="mobileSearchBar" hidden>
-      <span class="s-ico"><svg><use href="#i-search"/></svg></span>
+      <span class="s-ico"><svg aria-hidden="true" focusable="false"><use href="#i-search"/></svg></span>
       <input class="top-search-input" id="mobileSearchInput" aria-label="搜索通知、竞赛、奖学金" placeholder="搜索通知、竞赛、奖学金……"
              autocomplete="off" enterkeyhint="search" />
       <button class="icon-btn" id="mobileSearchClose" title="关闭搜索" aria-label="关闭搜索">✕</button>
@@ -171,7 +171,7 @@
 
           <div class="section-head">
             <div class="section-title">推荐给你的机会 <span class="sub">依据你的专业、年级与兴趣，附逐条理由</span></div>
-            <button class="section-more" onclick="switchView('match')">查看全部 <svg><use href="#i-chevron"/></svg></button>
+            <button class="section-more" onclick="switchView('match')">查看全部 <svg aria-hidden="true" focusable="false"><use href="#i-chevron"/></svg></button>
           </div>
 
           <div class="home-grid">
@@ -182,7 +182,7 @@
                 <div class="due-list" id="homeDue"></div>
               </div>
               <div class="trust-card">
-                <div class="trust-head"><svg><use href="#i-shield"/></svg>为什么可以相信这些结果</div>
+                <div class="trust-head"><svg aria-hidden="true" focusable="false"><use href="#i-shield"/></svg>为什么可以相信这些结果</div>
                 <div class="pipeline">
                   <div class="pipe-node"><span class="pipe-dot">1</span><div><div class="pipe-label">公开站点采集</div><div class="pipe-desc">7 个栏目 · 域名白名单 · 双闸去重</div></div></div>
                   <div class="pipe-node ai"><span class="pipe-dot">2</span><div><div class="pipe-label">AI 结构化解析</div><div class="pipe-desc">14 类字段 · 新闻稿不抽报名类字段</div></div></div>
@@ -268,7 +268,7 @@
               <p class="page-sub">同一套后端与用户画像，Web、PWA、微信小程序、系统日历四个入口共享数据</p>
             </div>
             <button class="btn ghost" id="btnRefreshMobile">
-              <svg><use href="#i-arrow"/></svg>刷新状态
+              <svg aria-hidden="true" focusable="false"><use href="#i-arrow"/></svg>刷新状态
             </button>
           </div>
 
@@ -304,12 +304,12 @@
                 <div class="cal-link">
                   <input class="input" id="calUrl" aria-label="日历订阅地址" readonly value="/api/calendar.ics" />
                   <button class="btn ghost" id="btnCopyCal">
-                    <svg><use href="#i-calendar"/></svg>复制
+                    <svg aria-hidden="true" focusable="false"><use href="#i-calendar"/></svg>复制
                   </button>
                 </div>
                 <div class="cal-actions">
                   <a class="btn ghost" id="calDownload" href="/api/calendar.ics" download>
-                    <svg><use href="#i-file"/></svg>下载 .ics
+                    <svg aria-hidden="true" focusable="false"><use href="#i-file"/></svg>下载 .ics
                   </a>
                 </div>
               </div>
@@ -330,7 +330,7 @@
               </p>
             </div>
             <button class="btn primary" id="btnScanConflicts">
-              <svg><use href="#i-search"/></svg>重新扫描
+              <svg aria-hidden="true" focusable="false"><use href="#i-search"/></svg>重新扫描
             </button>
           </div>
 
@@ -356,7 +356,7 @@
         <div class="container">
           <div class="toolbar">
             <div class="match-identity" id="matchIdentity" title="在右上角头像处登录或切换角色账号">
-              <svg><use href="#i-user"/></svg>
+              <svg aria-hidden="true" focusable="false"><use href="#i-user"/></svg>
               <span id="matchIdentityName">未登录</span>
             </div>
             <div class="seg" id="matchFilter">
@@ -373,7 +373,7 @@
           <div class="reco-panel" id="recoPanel" hidden>
             <div class="reco-head">
               <div class="reco-title">
-                <svg><use href="#i-spark"/></svg>
+                <svg aria-hidden="true" focusable="false"><use href="#i-spark"/></svg>
                 <span>为你推荐</span>
                 <span class="hint" id="recoMeta"></span>
               </div>
@@ -391,7 +391,7 @@
       <section class="view" id="view-qa">
         <div class="qa-wrap">
           <div class="qa-hero">
-            <div class="ai-mark"><svg><use href="#i-spark"/></svg></div>
+            <div class="ai-mark"><svg aria-hidden="true" focusable="false"><use href="#i-spark"/></svg></div>
             <h2>AI 校园信息助手</h2>
             <p>回答只基于已收录通知，调用结构化字段与用户画像，并给出原文出处。</p>
           </div>
@@ -404,19 +404,19 @@
           <!-- 页签 1：智能问答 -->
           <div class="qa-pane" id="qaPaneChat" role="tabpanel" aria-labelledby="qaTabChat">
             <!-- 示例问题逐条经过自检回归：都能从已收录通知中给出带原文依据的确切答案 -->
-            <div class="quick-hint"><svg><use href="#i-spark"/></svg>点击下面的常见问题，或自己在下方输入</div>
+            <div class="quick-hint"><svg aria-hidden="true" focusable="false"><use href="#i-spark"/></svg>点击下面的常见问题，或自己在下方输入</div>
             <div class="quick-grid" id="quickQuestions">
-              <button class="quick-card" data-q="有哪些学科竞赛可以报名？"><span class="q-ico"><svg><use href="#i-match"/></svg></span>可报名的学科竞赛</button>
-              <button class="quick-card" data-q="数学建模竞赛需要提交哪些材料？"><span class="q-ico"><svg><use href="#i-file"/></svg></span>建模竞赛要交什么</button>
-              <button class="quick-card" data-q="国家奖学金的申请条件是什么？"><span class="q-ico"><svg><use href="#i-search"/></svg></span>国奖申请条件</button>
-              <button class="quick-card" data-q="华为ICT大赛的报名截止时间？"><span class="q-ico"><svg><use href="#i-clock"/></svg></span>华为ICT截止日期</button>
-              <button class="quick-card" data-q="近期有哪些通知即将截止？"><span class="q-ico"><svg><use href="#i-clock"/></svg></span>近期截止事项</button>
-              <button class="quick-card" data-q="国家励志奖学金需要准备什么材料？"><span class="q-ico"><svg><use href="#i-file"/></svg></span>励志奖学金材料</button>
+              <button class="quick-card" data-q="有哪些学科竞赛可以报名？"><span class="q-ico"><svg aria-hidden="true" focusable="false"><use href="#i-match"/></svg></span>可报名的学科竞赛</button>
+              <button class="quick-card" data-q="数学建模竞赛需要提交哪些材料？"><span class="q-ico"><svg aria-hidden="true" focusable="false"><use href="#i-file"/></svg></span>建模竞赛要交什么</button>
+              <button class="quick-card" data-q="国家奖学金的申请条件是什么？"><span class="q-ico"><svg aria-hidden="true" focusable="false"><use href="#i-search"/></svg></span>国奖申请条件</button>
+              <button class="quick-card" data-q="华为ICT大赛的报名截止时间？"><span class="q-ico"><svg aria-hidden="true" focusable="false"><use href="#i-clock"/></svg></span>华为ICT截止日期</button>
+              <button class="quick-card" data-q="近期有哪些通知即将截止？"><span class="q-ico"><svg aria-hidden="true" focusable="false"><use href="#i-clock"/></svg></span>近期截止事项</button>
+              <button class="quick-card" data-q="国家励志奖学金需要准备什么材料？"><span class="q-ico"><svg aria-hidden="true" focusable="false"><use href="#i-file"/></svg></span>励志奖学金材料</button>
             </div>
             <div class="qa-conv" id="qaConv">
               <div class="qa-head">
                 <div class="qa-head-id">
-                  <span class="ai-mark xs"><svg><use href="#i-spark"/></svg></span>
+                  <span class="ai-mark xs"><svg aria-hidden="true" focusable="false"><use href="#i-spark"/></svg></span>
                   <div class="qa-head-txt">
                     <strong>高校智讯 AI 助手</strong>
                     <span id="chatStatus">正在读取引擎状态…</span>
@@ -449,7 +449,7 @@
           <div class="qa-pane" id="qaPaneLab" role="tabpanel" aria-labelledby="qaTabLab" hidden>
             <div class="card lab-note">
               <div class="lab-note-head">
-                <span class="ai-mark sm"><svg><use href="#i-shield"/></svg></span>
+                <span class="ai-mark sm"><svg aria-hidden="true" focusable="false"><use href="#i-shield"/></svg></span>
                 <div>
                   <strong>粘贴一段通知，现场看 AI 如何被约束</strong>
                   <p>不写入数据库、不改动已收录通知。每个字段都要能在原文定位，最后统一经过 C1—C9 规则校验；
@@ -563,23 +563,23 @@
 
 <!-- 移动端底部导航 -->
 <nav class="mobile-nav" id="mobileNav" aria-label="移动端底部导航">
-  <button class="active" data-view="home"><svg><use href="#i-home"/></svg>首页</button>
-  <button data-view="notices"><svg><use href="#i-notice"/></svg>通知</button>
-  <button data-view="match"><svg><use href="#i-match"/></svg>匹配</button>
-  <button data-view="qa"><svg><use href="#i-spark"/></svg>AI</button>
-  <button data-view="tasks"><svg><use href="#i-task"/></svg>任务</button>
-  <button data-action="more" id="mobileMore"><svg><use href="#i-chart"/></svg>更多</button>
+  <button class="active" data-view="home"><svg aria-hidden="true" focusable="false"><use href="#i-home"/></svg>首页</button>
+  <button data-view="notices"><svg aria-hidden="true" focusable="false"><use href="#i-notice"/></svg>通知</button>
+  <button data-view="match"><svg aria-hidden="true" focusable="false"><use href="#i-match"/></svg>匹配</button>
+  <button data-view="qa"><svg aria-hidden="true" focusable="false"><use href="#i-spark"/></svg>AI</button>
+  <button data-view="tasks"><svg aria-hidden="true" focusable="false"><use href="#i-task"/></svg>任务</button>
+  <button data-action="more" id="mobileMore"><svg aria-hidden="true" focusable="false"><use href="#i-chart"/></svg>更多</button>
 </nav>
 
 <div class="sheet-mask" id="sheetMask"></div>
 <nav class="sheet" id="moreSheet" aria-label="更多功能">
   <div class="sheet-handle"></div>
-  <button class="sheet-item" data-view="mobile"><span class="ico"><svg><use href="#i-mobile"/></svg></span>多端接入</button>
-  <button class="sheet-item" data-view="conflicts"><span class="ico"><svg><use href="#i-alert"/></svg></span>冲突治理</button>
-  <button class="sheet-item" data-view="dashboard"><span class="ico"><svg><use href="#i-chart"/></svg></span>数据总览</button>
-  <button class="sheet-item" data-view="sources"><span class="ico"><svg><use href="#i-cloud"/></svg></span>采集中心</button>
-  <button class="sheet-item" id="sheetAddNotice"><span class="ico"><svg><use href="#i-plus"/></svg></span>录入通知</button>
-  <button class="sheet-item" id="sheetBatchAnalyze"><span class="ico"><svg><use href="#i-spark"/></svg></span>批量解析</button>
+  <button class="sheet-item" data-view="mobile"><span class="ico"><svg aria-hidden="true" focusable="false"><use href="#i-mobile"/></svg></span>多端接入</button>
+  <button class="sheet-item" data-view="conflicts"><span class="ico"><svg aria-hidden="true" focusable="false"><use href="#i-alert"/></svg></span>冲突治理</button>
+  <button class="sheet-item" data-view="dashboard"><span class="ico"><svg aria-hidden="true" focusable="false"><use href="#i-chart"/></svg></span>数据总览</button>
+  <button class="sheet-item" data-view="sources"><span class="ico"><svg aria-hidden="true" focusable="false"><use href="#i-cloud"/></svg></span>采集中心</button>
+  <button class="sheet-item" id="sheetAddNotice"><span class="ico"><svg aria-hidden="true" focusable="false"><use href="#i-plus"/></svg></span>录入通知</button>
+  <button class="sheet-item" id="sheetBatchAnalyze"><span class="ico"><svg aria-hidden="true" focusable="false"><use href="#i-spark"/></svg></span>批量解析</button>
 </nav>
 
 <!-- 详情抽屉 -->

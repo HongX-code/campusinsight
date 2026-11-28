@@ -106,7 +106,7 @@ function renderLoginRoles() {
     return `<button type="button" class="role-card ${active ? "active" : ""}" data-login-id="${u.id}">
       <span class="role-avatar">${esc(u.name.slice(0, 1))}</span>
       <span class="role-meta"><strong>${esc(u.name)}</strong><span>${esc(roleLabel(u))} · 关注 ${esc((u.interests || []).join("、") || "未设置")}</span></span>
-      <svg class="role-check"><use href="#i-check"/></svg>
+      <svg aria-hidden="true" focusable="false" class="role-check"><use href="#i-check"/></svg>
     </button>`;
   }).join("");
   $$(".role-card", box).forEach((c) => c.addEventListener("click", () => {
@@ -217,7 +217,7 @@ function engineTag(a) {
   return `<span class="tag">${label}</span>`;
 }
 
-const icon = (name) => `<svg><use href="#i-${name}"/></svg>`;
+const icon = (name) => `<svg aria-hidden="true" focusable="false"><use href="#i-${name}"/></svg>`;
 
 /* ---------------- 视图切换 ---------------- */
 const VIEW_META = {
@@ -1051,6 +1051,8 @@ const PROFILE_INTEREST_OPTIONS = ["竞赛", "科研", "讲座", "志愿服务", 
 function renderProfileCard(u) {
   const box = $("#profileCard");
   if (!box) return;
+  /* 登录后要把未登录时被整体隐藏的容器恢复回来 */
+  box.hidden = false;
   if (!state.profileEditing) {
     box.innerHTML = `
       <div class="avatar">${esc(u.name.slice(0, 1))}</div>
@@ -1066,7 +1068,7 @@ function renderProfileCard(u) {
   const chosen = new Set(u.interests || []);
   box.innerHTML = `
     <div class="profile-edit">
-      <div class="profile-edit-title"><svg><use href="#i-user"/></svg>编辑个人信息 · 匹配会据此实时更新</div>
+      <div class="profile-edit-title"><svg aria-hidden="true" focusable="false"><use href="#i-user"/></svg>编辑个人信息 · 匹配会据此实时更新</div>
       <div class="profile-grid">
         <label class="field"><span>姓名</span><input class="input" id="pfName" value="${esc(u.name)}" maxlength="20"/></label>
         <label class="field"><span>年级</span><input class="input" id="pfGrade" value="${esc(u.grade || "")}" maxlength="12" placeholder="如 大三 / 研二"/></label>
@@ -1130,7 +1132,11 @@ async function renderMatch() {
   /* 未登录时不展示任何角色的匹配结果，引导先在头像处选择登录角色 */
   if (!u) {
     $("#matchSummary").textContent = "";
-    $("#profileCard").innerHTML = "";
+    /* 只清空 innerHTML 会留下带内边距的空卡片（一条 40px 白条），
+       连同容器一起隐藏，未登录时页面只呈现下方那张引导卡。 */
+    const pc = $("#profileCard");
+    pc.innerHTML = "";
+    pc.hidden = true;
     const rp = $("#recoPanel");
     if (rp) rp.hidden = true;
     $("#matchList").innerHTML = '<div class="card empty">请先点击右上角头像，选择一个角色账号登录。<br />登录后这里会按该角色的专业、年级与兴趣，给出三档匹配结论与逐条理由。</div>';
@@ -2007,7 +2013,7 @@ async function renderMobile() {
       const meta = PLATFORM_META[k] || { name: k, desc: "", icon: "i-file" };
       const entry = p.entry || p.manifest || p.subscription || "";
       return `<div class="platform-row">
-        <span class="pf-ico"><svg><use href="#${meta.icon}"/></svg></span>
+        <span class="pf-ico"><svg aria-hidden="true" focusable="false"><use href="#${meta.icon}"/></svg></span>
         <div class="pf-main">
           <div class="pf-name">${esc(meta.name)}
             <span class="tag ${p.available ? "tag-success" : "tag-gray"}">${p.available ? "可用" : "关闭"}</span>
