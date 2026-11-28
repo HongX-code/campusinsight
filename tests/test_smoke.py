@@ -1381,6 +1381,31 @@ def main() -> int:
                   re.search(re.escape(var) + r"\s*:\s*" + re.escape(want) + r"\b", style_nc,
                             re.I) is not None,
                   f"应写 {want}")
+        # 弹窗与抽屉是模态语义：读屏要能报出角色与标题，键盘要能用 Esc 关掉，
+        # 否则鼠标用户与键盘用户看到的是两个不同的产品。
+        page_html = page.text
+        for elem_id, label_id in (("drawer", "drawerTitle"), ("modalMask", "modalTitle"),
+                                  ("loginMask", "loginTitle")):
+            opening = re.search(r'<[^>]*id="' + elem_id + r'"[^>]*>', page_html)
+            start = opening.start() if opening else 0
+            # role="dialog" 可以挂在遮罩本身（抽屉），也可以挂在遮罩内的 .modal 上，
+            # 只要这一段里存在带 aria-modal 且绑定 label_id 的对话框节点即可。
+            segment = page_html[start:start + 400]
+            labelled = re.search(r'<[^>]*id="' + label_id + r'"[^>]*>', page_html)
+            check(f"弹窗 {elem_id} 具备对话框语义与标题绑定",
+                  'role="dialog"' in segment and 'aria-modal="true"' in segment
+                  and f'aria-labelledby="{label_id}"' in segment and labelled is not None,
+                  f"segment={segment[:80]}")
+        icon_aria = re.findall(r'class="icon-btn"[^>]*aria-label="[^"]+"', page_html)
+        check("纯图形关闭按钮带 aria-label",
+              len(icon_aria) >= 4, f"命中 {len(icon_aria)} 处")
+        app_src = (root_dir / "app" / "static" / "js" / "app.js").read_text(encoding="utf-8")
+        check("登录弹窗打开把焦点移入角色卡片、关闭还回触发按钮",
+              'role-card")?.focus()' in app_src and 'userChip")?.focus()' in app_src,
+              "缺少焦点移交")
+        check("Esc 先关登录弹窗再关抽屉（模态优先级）",
+              'classList.contains("open")) { closeLogin(); return; }' in app_src,
+              "Esc 处理未分优先级")
         check("小程序图标资源已就绪",
               (root_dir / "miniprogram" / "images" / "tab-home.png").exists()
               and (root_dir / "miniprogram" / "images" / "tab-mine-active.png").exists(),

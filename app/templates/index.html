@@ -150,7 +150,7 @@
       <span class="s-ico"><svg><use href="#i-search"/></svg></span>
       <input class="top-search-input" id="mobileSearchInput" placeholder="搜索通知、竞赛、奖学金……"
              autocomplete="off" enterkeyhint="search" />
-      <button class="icon-btn" id="mobileSearchClose" title="关闭搜索">✕</button>
+      <button class="icon-btn" id="mobileSearchClose" title="关闭搜索" aria-label="关闭搜索">✕</button>
     </div>
 
     <div class="scroll">
@@ -584,23 +584,23 @@
 
 <!-- 详情抽屉 -->
 <div class="drawer-mask" id="drawerMask"></div>
-<aside class="drawer" id="drawer">
+<aside class="drawer" id="drawer" role="dialog" aria-modal="true" aria-labelledby="drawerTitle">
   <div class="drawer-head">
     <div>
       <h2 id="drawerTitle">通知详情</h2>
       <p class="hint" id="drawerMeta"></p>
     </div>
-    <button class="icon-btn" id="drawerClose">✕</button>
+    <button class="icon-btn" id="drawerClose" aria-label="关闭通知详情">✕</button>
   </div>
   <div class="drawer-body" id="drawerBody"></div>
 </aside>
 
 <!-- 录入弹窗 -->
-<div class="modal-mask" id="modalMask">
-  <div class="modal">
+<div class="modal-mask" id="modalMask" role="presentation">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
     <div class="modal-head">
-      <h2>录入通知</h2>
-      <button class="icon-btn" id="modalClose">✕</button>
+      <h2 id="modalTitle">录入通知</h2>
+      <button class="icon-btn" id="modalClose" aria-label="关闭录入窗口">✕</button>
     </div>
     <div class="tabs" id="ingestTabs">
       <button class="tab active" data-tab="manual">手动录入</button>
@@ -628,11 +628,11 @@
 </div>
 
 <!-- 角色账号登录弹窗 -->
-<div class="modal-mask" id="loginMask">
-  <div class="modal login-modal">
+<div class="modal-mask" id="loginMask" role="presentation">
+  <div class="modal login-modal" role="dialog" aria-modal="true" aria-labelledby="loginTitle">
     <div class="modal-head">
-      <h2>选择角色账号登录</h2>
-      <button class="icon-btn" id="loginClose">✕</button>
+      <h2 id="loginTitle">选择角色账号登录</h2>
+      <button class="icon-btn" id="loginClose" aria-label="关闭登录窗口">✕</button>
     </div>
     <div class="login-intro">不同角色拥有各自的年级、专业与兴趣画像，登录后「我的匹配」只按当前登录者的画像计算，三档结论与理由随角色切换而更新。</div>
     <div class="login-roles" id="loginRoles"></div>

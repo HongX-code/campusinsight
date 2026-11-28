@@ -86,8 +86,16 @@ function refreshIdentityUI() {
 function openLogin() {
   renderLoginRoles();
   $("#loginMask")?.classList.add("open");
+  // 弹窗打开后把焦点移进对话框，键盘用户才能继续用 Tab 选择角色
+  setTimeout(() => { $("#loginRoles .role-card")?.focus(); }, 30);
 }
-function closeLogin() { $("#loginMask")?.classList.remove("open"); }
+function closeLogin() {
+  const mask = $("#loginMask");
+  if (!mask || !mask.classList.contains("open")) return;
+  mask.classList.remove("open");
+  // 关闭后把焦点还给触发按钮，避免焦点落在 body 上丢失键盘上下文
+  $("#userChip")?.focus();
+}
 function renderLoginRoles() {
   const box = $("#loginRoles");
   if (!box) return;
@@ -2379,7 +2387,11 @@ function bindEvents() {
   }));
 
   document.addEventListener("keydown", (e) => {
-    if (e.key === "Escape") { closeDrawer(); closeModal(); closeSheet(); }
+    // 登录弹窗是模态的，Esc 只关它，不要顺手把抽屉和底部面板也关掉
+    if (e.key === "Escape") {
+      if ($("#loginMask")?.classList.contains("open")) { closeLogin(); return; }
+      closeDrawer(); closeModal(); closeSheet();
+    }
   });
 }
 
