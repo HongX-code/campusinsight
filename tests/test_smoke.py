@@ -1426,6 +1426,10 @@ def main() -> int:
               'ArrowLeft' in app_src and 'ArrowRight' in app_src
               and '"Home"' in app_src and 'switchQaTab(btns[next].dataset.tab)' in app_src,
               "缺少页签键盘切换")
+        check("导航当前视图用 aria-current 标记",
+              'aria-current' in app_src and '"page"' in app_src
+              and 'b.setAttribute("aria-current", "page")' in app_src,
+              "导航缺少 aria-current 标记")
         check("操作反馈区域是读屏可播报的 live region",
               'aria-live="polite"' in page_html
               and 'role="status"' in page_html

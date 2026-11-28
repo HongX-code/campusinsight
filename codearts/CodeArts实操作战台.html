@@ -442,7 +442,7 @@ const DAYS = [
 const PROMPTS = [
   {id:"P0",name:"系统级常驻约束",file:"prompts/P00_system.md",text:"按 .codeartsdoer/AGENTS.md 的工程约束回答；先出方案再改码，末尾给验收命令，未验证的云资源一律写「代码就绪，待开通验证」。"},
   {id:"P1",name:"需求理解与符合度盘点",file:"prompts/P01_requirements.md",text:"独立复核三份设计文档的符合度，标出矩阵里站不住的 ✅，只报不改，每条给文件与验证命令。"},
-  {id:"P2",name:"缺陷定位与修复",file:"prompts/P02_bugfix.md",text:"从现象出发定位这个 500 的调用链与抛异常行号，先别改码；说明为什么 293 项自检没抓到。"},
+  {id:"P2",name:"缺陷定位与修复",file:"prompts/P02_bugfix.md",text:"从现象出发定位这个 500 的调用链与抛异常行号，先别改码；说明为什么 294 项自检没抓到。"},
   {id:"P3",name:"边界用例与回归测试",file:"prompts/P03_tests.md",text:"为接口层与界面层补边界用例，先给用例矩阵，确认后写进 test_smoke.py，不引入 pytest。"},
   {id:"P4",name:"代码规范与静态检查",file:"prompts/P04_static_check.md",text:"静态体检 app/，最多列 10 条会导致 500 或数据不一致的问题，风格问题单列，不改文件。"},
   {id:"P5",name:"构建脚本与流水线",file:"prompts/P05_pipeline.md",text:"生成单 FastAPI 进程的构建门禁阶段表：编译→自检→双集→真实集→JS 语法→交付件，任一步失败即中止。"},

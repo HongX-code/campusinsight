@@ -235,8 +235,20 @@ const VIEW_META = {
 function switchView(name, push = true) {
   if (!VIEW_META[name]) return;
   state.view = name;
-  $$(".nav-item").forEach((b) => b.classList.toggle("active", b.dataset.view === name));
-  $$("#mobileNav button").forEach((b) => b.classList.toggle("active", b.dataset.view === name));
+  /* aria-current 让读屏能报出「当前是哪个视图」，
+     纯视觉的 .active 类对辅助技术不可见。 */
+  $$(".nav-item").forEach((b) => {
+    const on = b.dataset.view === name;
+    b.classList.toggle("active", on);
+    if (on) b.setAttribute("aria-current", "page");
+    else b.removeAttribute("aria-current");
+  });
+  $$("#mobileNav button").forEach((b) => {
+    const on = b.dataset.view === name;
+    b.classList.toggle("active", on);
+    if (on) b.setAttribute("aria-current", "page");
+    else b.removeAttribute("aria-current");
+  });
   $$(".view").forEach((v) => v.classList.toggle("active", v.id === "view-" + name));
   const scrollEl = document.querySelector(".scroll");
   if (scrollEl) scrollEl.classList.toggle("scroll--qa", name === "qa");

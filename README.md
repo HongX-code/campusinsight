@@ -145,7 +145,7 @@ gaoxiao-zhixun/
 │   ├── capture.py            # 一键重生成 24 张界面截图
 │   ├── codearts_tools.py     # doctor / bootstrap / split / index / verify：环境、骨架、索引、口径
 │   └── ci_gate.py            # 构建与质量门禁（9 阶段，失败即停，不吞退出码）
-├── tests/test_smoke.py       # 端到端自检（293 项，采集用例离线可跑）
+├── tests/test_smoke.py       # 端到端自检（294 项，采集用例离线可跑）
 ├── requirements.txt
 ├── .env.example
 ├── run.py                    # 本地启动器（--check 体检 / --open 自动开浏览器）
@@ -309,7 +309,7 @@ A 系列**不参与 `split`**，11 份独立提示词口径不变；两份文档
 
 ```bash
 python scripts/crawl.py --all --limit 6 --save data/real_notices.json   # 抓取真实通知（需联网）
-python tests/test_smoke.py                  # 293 项端到端自检（无需联网）
+python tests/test_smoke.py                  # 294 项端到端自检（无需联网）
 python scripts/evaluate.py                  # 开发集评测（24 份）
 python scripts/evaluate.py --set holdout    # 留出集评测（8 份，检验泛化）
 python scripts/real_audit.py                # 真实集质量审计（生成 docs/real_audit.md）

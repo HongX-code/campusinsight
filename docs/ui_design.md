@@ -216,6 +216,7 @@
 - 对话框语义：详情抽屉、录入弹窗、登录弹窗都是 `role="dialog"` + `aria-modal="true"` + `aria-labelledby` 指向各自标题；纯图形关闭按钮一律带 `aria-label`。登录弹窗打开时把焦点交给第一张角色卡片，关闭后还给触发它的顶栏头像按钮，Esc 也只关当前这一层，避免键盘用户焦点落到 body 上丢失上下文；
 - 页签语义：`.qa-tabs` 是 `role="tablist"`，两个 `.seg-btn` 是 `role="tab"` 并用 `aria-controls` 绑定 `.qa-pane` 的 `role="tabpanel"` + `aria-labelledby`；采用漫游 tabindex（只有激活页签是 `tabindex="0"`），支持左右方向键循环、`Home`/`End` 跳到首尾；
 - 操作反馈：`#toast` 是 `role="status"` + `aria-live="polite"` + `aria-atomic="true"` 的 live region，读屏会在「已加入待办」「保存失败」这类操作后直接播报，不必再去找视觉提示；
+- 导航当前项：左侧 `.nav-item` 与移动端 `#mobileNav` 的当前视图除了 `.active` 视觉类，同时用 `aria-current="page"` 标记（`switchView()` 里成对设置与清除），`.active` 对辅助技术不可见，光有它读屏无法判断当前在哪一页；
 - 截图脚本用 `390×844` 视口：`shot-mobile.png` 用**视口截图**（非 full_page）才能拍到 fixed 底部导航，`shot-mobile-full.png` 用 `full_page` 拍完整长页。**24 张截图已按当前界面重生成；真机截图仍待验证阶段补齐。**
 - 智能问答的 6 张 `.quick-card` 示例全部对应真实通知，措辞不含「适合我 / 这个」等无依据指代；
   回答底栏新增 `.ans-intent`（识别到的意图）与 `.ans-fields`（依据结构化字段条数）两个克制的胶囊标签，
