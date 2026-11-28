@@ -1451,6 +1451,44 @@ def main() -> int:
         check("装饰性图标 SVG 全部对读屏隐藏",
               len(_svg_tags) > 0 and len(_svg_tags) == len(_svg_quiet),
               f"共 {len(_svg_tags)} 个 svg，其中 {len(_svg_quiet)} 个已隐藏")
+        # 流畅统一性：缓存 / 重复点击 / 忙碌态 / 骨架占位。
+        # 这四类问题在浏览器里只表现为「请求多了几次」「按钮能连点」，
+        # 没有报错、数据也不脏，只能靠源码断言钉住。
+        _mem_ttl = "const MEM_TTL = " in app_src
+        _cache_get = "cacheGet(" in app_src and "cachePut(" in app_src
+        _flush_on_write = "if (method !== \"GET\") cacheFlush();" in app_src
+        _only_get_cached = 'method === "GET"' in app_src
+        check("前端短 TTL 缓存只缓存 GET 且写请求后整体失效",
+              _mem_ttl and _cache_get and _flush_on_write and _only_get_cached,
+              f"MEM_TTL={_mem_ttl} 读写={_cache_get} 写后失效={_flush_on_write} "
+              f"仅GET={_only_get_cached}")
+        check("同一视图重复点击不重复取数",
+              "VIEW_REFRESH_MS" in app_src and "if (same) return;" in app_src,
+              "缺少重复点击的刷新窗口判断")
+        _busy_uses = len(re.findall(r"withBusy\(", app_src))
+        check("写操作统一走 withBusy 防重复提交",
+              _busy_uses >= 6 and 'btn.dataset.busy === "1"' in app_src,
+              f"withBusy 调用 {_busy_uses} 处")
+        _skeleton_views = ["skeletonRows(", "skeletonCards("]
+        _has_old_loading = 'class="card empty">加载中' in app_src
+        # 待办与匹配是最后两个还靠「空列表 → 满列表」硬切的视图，
+        # 这里钉住骨架覆盖到它们，避免以后回退。
+        _sk_views = {}
+        for _fn in ("renderHome", "renderNotices", "renderDashboard", "renderTasks",
+                    "renderMatch", "renderSources", "renderConflicts", "renderMobile"):
+            _i = app_src.find("async function " + _fn)
+            if _i < 0:
+                _i = app_src.find("function " + _fn)
+            _head = app_src[_i:_i + 2400] if _i >= 0 else ""
+            _sk_views[_fn] = "skeleton" in _head
+        check("八个取数视图都用骨架占位",
+              all(_sk_views.values()),
+              "缺骨架：" + "、".join(k for k, v in _sk_views.items() if not v))
+
+        check("各视图加载态统一使用骨架占位",
+              all(t in app_src for t in _skeleton_views) and not _has_old_loading,
+              f"骨架={all(t in app_src for t in _skeleton_views)} "
+              f"残留旧占位={_has_old_loading}")
         check("小程序图标资源已就绪",
               (root_dir / "miniprogram" / "images" / "tab-home.png").exists()
               and (root_dir / "miniprogram" / "images" / "tab-mine-active.png").exists(),

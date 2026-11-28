@@ -1,22 +1,22 @@
 {
-  "generated_at": "2026-11-28 16:40:08",
+  "generated_at": "2026-11-28 19:26:20",
   "python": "3.12",
   "source": "现场执行，见 evidence 数组的 command / exit_code",
   "scale": {
-    "python_lines": 17391,
-    "frontend_lines": 4859,
-    "total_lines": 22250,
+    "python_lines": 17429,
+    "frontend_lines": 4973,
+    "total_lines": 22402,
     "scripts_lines": 5646,
     "html_lines": 648,
-    "js_lines": 2433,
-    "css_lines": 1778,
+    "js_lines": 2529,
+    "css_lines": 1796,
     "endpoints": 51,
     "docs_md": 21,
     "screenshots": 24,
     "views": 9
   },
   "checks": {
-    "smoke_passed": 297,
+    "smoke_passed": 302,
     "smoke_failed": 0,
     "mutation_detected": 11,
     "mutation_total": 11,
@@ -37,7 +37,7 @@
       "name": "端到端业务自检",
       "command": "python tests/test_smoke.py",
       "exit_code": 0,
-      "key": "297 项通过 / 0 失败",
+      "key": "302 项通过 / 0 失败",
       "level": "L1",
       "note": "离线可跑，独立临时数据库，不污染演示数据"
     },
@@ -127,7 +127,7 @@
       "label": "日期容错放宽（脏日期重新流入）",
       "detected": true,
       "exit_code": 1,
-      "passed": 292,
+      "passed": 297,
       "failed": 1,
       "triggered": [
         "日期工具：非法字符串安全返回 None "
@@ -138,7 +138,7 @@
       "label": "规则校验恒通过（C1—C11 形同虚设）",
       "detected": true,
       "exit_code": 1,
-      "passed": 292,
+      "passed": 297,
       "failed": 1,
       "triggered": [
         "规则校验拦截『截止早于发布』 ['截止日期 2026-01-01 早于发布时间 2026-11-06', '截止日期 2026-01-01 未能在原文定位，已置空待复核']"
@@ -149,7 +149,7 @@
       "label": "硬条件冲突不再判暂不符合",
       "detected": true,
       "exit_code": 1,
-      "passed": 289,
+      "passed": 294,
       "failed": 4,
       "triggered": [
         "研究生对本科生限定通知判为暂不符合 match",
@@ -162,7 +162,7 @@
       "label": "删除通知不清理个人待办",
       "detected": true,
       "exit_code": 1,
-      "passed": 291,
+      "passed": 296,
       "failed": 2,
       "triggered": [
         "删除通知后无僵尸待办 [{'id': 2, 'user_id': 1, 'notice_id': 5, 'status': 'todo', 'remind_time': '', 'note': '', 'notice_title': '', 'deadline': None}, {'id': 1, 'user_id': 1, 'notice_id': 1, 'status': 'done', 'remind_time': '', 'note': '', 'notice_title': '关于举办2026年数学建模竞赛的通知', 'deadline': '2026-11-20'}]",
@@ -174,7 +174,7 @@
       "label": "问答 top_k 不透传",
       "detected": true,
       "exit_code": 1,
-      "passed": 292,
+      "passed": 297,
       "failed": 1,
       "triggered": [
         "问答 top_k 参数生效 top_k=1 -> 3 / top_k=3 -> 3"
@@ -185,7 +185,7 @@
       "label": "人工修正不再校验日期格式",
       "detected": true,
       "exit_code": 1,
-      "passed": 289,
+      "passed": 294,
       "failed": 4,
       "triggered": [
         "人工修正拒绝非法日期 2026-11-13x {\"id\":5,\"title\":\"关于2027届校园招聘宣讲会的通知\",\"content\":\"招聘对象：2027届毕业生，专业包括计算机、电子信息等相关专业。\\n报名截止：2026年12月20日，请提交报名表至学院办公室。\\n联系人：张老师",
@@ -198,7 +198,7 @@
       "label": "新闻稿可加入待办 / 进入匹配",
       "detected": true,
       "exit_code": 1,
-      "passed": 292,
+      "passed": 297,
       "failed": 1,
       "triggered": [
         "新闻稿不出现在个性化匹配里 {\"user\":{\"id\":1,\"name\":\"测试研究生\",\"grade\":\"研一\",\"major\":\"计算机科学与技术\",\"student_no\":\"\",\"interests\":[\"竞赛\"]},\"counts\":{\"match\":0,\"maybe\":1,\"no\":2},\"it"
@@ -209,7 +209,7 @@
       "label": "检索结果不再按 top_k 截断",
       "detected": true,
       "exit_code": 1,
-      "passed": 291,
+      "passed": 296,
       "failed": 2,
       "triggered": [
         "检索按 top_k 截断（单元探针） top_k=1 -> 5 / top_k=3 -> 5",
@@ -221,7 +221,7 @@
       "label": "去重指纹失效（正文不参与）",
       "detected": true,
       "exit_code": 1,
-      "passed": 284,
+      "passed": 289,
       "failed": 9,
       "triggered": [
         "同标题不同正文不算重复（正文参与指纹） {\"detail\":\"该通知已存在（编号 1），无需重复录入\"}",

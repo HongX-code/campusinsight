@@ -145,7 +145,7 @@ gaoxiao-zhixun/
 │   ├── capture.py            # 一键重生成 24 张界面截图
 │   ├── codearts_tools.py     # doctor / bootstrap / split / index / verify：环境、骨架、索引、口径
 │   └── ci_gate.py            # 构建与质量门禁（9 阶段，失败即停，不吞退出码）
-├── tests/test_smoke.py       # 端到端自检（297 项，采集用例离线可跑）
+├── tests/test_smoke.py       # 端到端自检（302 项，采集用例离线可跑）
 ├── requirements.txt
 ├── .env.example
 ├── run.py                    # 本地启动器（--check 体检 / --open 自动开浏览器）
@@ -309,7 +309,7 @@ A 系列**不参与 `split`**，11 份独立提示词口径不变；两份文档
 
 ```bash
 python scripts/crawl.py --all --limit 6 --save data/real_notices.json   # 抓取真实通知（需联网）
-python tests/test_smoke.py                  # 297 项端到端自检（无需联网）
+python tests/test_smoke.py                  # 302 项端到端自检（无需联网）
 python scripts/evaluate.py                  # 开发集评测（24 份）
 python scripts/evaluate.py --set holdout    # 留出集评测（8 份，检验泛化）
 python scripts/real_audit.py                # 真实集质量审计（生成 docs/real_audit.md）
@@ -590,6 +590,30 @@ python scripts/sanitize_demo_db.py --check  # 演示库同样检查
 3. **标题去重**：同一通知的多来源副本按归一化标题合并，只占一个引用位；
 4. **能报/已截止分口径**：清单类问题先剔除新闻稿，未截止的排前面；一条都没剩时如实说「都已过报名截止」，
    不套用「尚未截止」的模板。引用卡片带 `deadline`，前端直接标出该条是否已截止。
+
+### 6.8 交互流畅与统一性（v1.5）
+
+同一套页面里，如果有的视图先摆灰块、有的视图写「加载中…」，用户看到的是两种节奏；
+如果连点几次导航或按钮就多打几遍接口，用户感觉到的是「卡」。这一轮针对的是这类
+**不报错、但能感觉出来**的问题，四条改动都在前端：
+
+1. **短 TTL 缓存**（`api()` 内置）：GET 命中 12 秒窗口内的同路径直接复用内存结果；
+   任何写请求成功返回后整体 `cacheFlush()`，避免"点了没反应"。首页与数据总览共用
+   `/api/dashboard/stats`，来回切视图不再重复取数。
+2. **同一视图重复点击不重取数**：`switchView` 记下每个视图的最后取数时刻，
+   15 秒内再次点同一项只做滚动复位，不再整轮重新渲染——连点导航的用意通常是"回到这一页"，
+   不是"刷新"。
+3. **加载态统一为骨架**：八个取数视图（首页、数据总览、通知中心、我的任务、我的匹配、
+   采集中心、冲突检测、移动端）在取数期间都先渲染同形灰块（`skeletonRows()` /
+   `skeletonCards()`），内容到位后原地替换，不会出现"空列表 → 满列表"的高度突变；
+   抽屉详情同样先摆骨架。全站不再有「加载中…」这类会跳动的文字占位。
+4. **写操作统一走 `withBusy()`**：加入待办、重新解析、删除通知、批量解析、保存资料、
+   开始抓取、导入抓取、提交录入八个入口共用同一套忙碌态——进入时按钮禁用并显示
+   `spinner + 进行中文案`，`dataset.busy` 拦住重复点击，`finally` 里恢复原样。
+   连点"加入待办"只会发出一个 `POST`，不会再出现第二次的 409「该通知已在待办中」。
+
+骨架与忙碌态都遵守 `prefers-reduced-motion`：系统要求减少动效时，`shimmer` 与过渡
+时长被压到最低，但灰块占位本身保留——它是信息结构，不是装饰。
 
 ---
 

@@ -21,6 +21,8 @@ const state = {
   total: 0,
   currentNotice: null,
   dashboardCache: null,
+  /* 每个视图最后一次取数的时刻，用于抑制「连点同一导航项」引发的重复请求与骨架闪烁 */
+  renderedAt: {},
   asking: false,
   lastQuestion: "",
   qaTab: "chat",
@@ -117,8 +119,30 @@ function renderLoginRoles() {
 }
 
 /* ---------------- 基础工具 ---------------- */
+/* 短 TTL 内存缓存：首页与数据总览都会拉 dashboard/stats，来回切换视图时
+   没有必要每次都打一遍网络。只缓存 GET，写请求成功后整体失效，
+   保证「改完立刻看到新数据」。 */
+const MEM_TTL = 12000;
+const memCache = new Map();
+function cacheGet(key) {
+  const hit = memCache.get(key);
+  if (!hit) return null;
+  if (Date.now() - hit.at > hit.ttl) { memCache.delete(key); return null; }
+  return hit.data;
+}
+function cachePut(key, data, ttl) { memCache.set(key, { at: Date.now(), data, ttl }); }
+function cacheFlush() { memCache.clear(); }
+
 async function api(path, options = {}) {
   const opt = { headers: { "Content-Type": "application/json" }, ...options };
+  const method = String(opt.method || "GET").toUpperCase();
+  /* cache: 传毫秒数可覆盖默认 TTL，传 0 表示这次不走缓存 */
+  const ttl = opt.cache === undefined ? (method === "GET" ? MEM_TTL : 0) : opt.cache;
+  delete opt.cache;
+  if (ttl > 0) {
+    const cached = cacheGet(path);
+    if (cached !== null) return cached;
+  }
   if (opt.body && typeof opt.body !== "string") opt.body = JSON.stringify(opt.body);
   /* 移动网络下请求可能长时间悬挂；统一加超时，避免按钮一直转圈 */
   const ctrl = new AbortController();
@@ -141,6 +165,11 @@ async function api(path, options = {}) {
     const msg = (data && (data.detail || data.error)) || `请求失败（${res.status}）`;
     throw new Error(typeof msg === "string" ? msg : JSON.stringify(msg));
   }
+  /* 写操作成功后清空读缓存：新增/删除/解析都会改变列表与统计，
+     留着旧快照会让用户以为「点了没反应」。 */
+  if (method !== "GET") cacheFlush();
+  /* 返回的是同一份对象引用，调用方不要就地改写缓存内容 */
+  if (ttl > 0 && method === "GET") cachePut(path, data, ttl);
   return data;
 }
 
@@ -219,6 +248,40 @@ function engineTag(a) {
 
 const icon = (name) => `<svg aria-hidden="true" focusable="false"><use href="#i-${name}"/></svg>`;
 
+/* 统一的占位骨架：同一形状的灰块比「加载中…」文字更稳——
+   内容到位时不会整块跳一下，读屏也不会读到一串临时文案。
+   lines 为文字块条数，avatar/cards 控制块形状。 */
+function skeletonRows(lines = 3, cls = "") {
+  return `<div class="sk-block ${cls}" aria-hidden="true">${
+    Array.from({ length: lines }, (_, i) =>
+      `<div class="skeleton sk-line" style="width:${i === 0 ? 62 : i === lines - 1 ? 45 : 88}%"></div>`).join("")
+  }</div>`;
+}
+function skeletonCards(n = 3, height = 96, cls = "sk-grid") {
+  return Array.from({ length: n }, () => `<div class="skeleton" style="height:${height}px"></div>`).join("");
+}
+
+/* 写操作的统一「提交中」锁定：同一颗按钮在请求返回前不再接受点击，
+   既避免重复提交，也让用户看到「已在处理」，不再连点。
+   失败时把按钮文案还原，成功则交给调用方决定是否重绘。 */
+async function withBusy(btn, text, fn) {
+  if (!btn) return fn();
+  if (btn.dataset.busy === "1") return undefined;
+  const oldHTML = btn.innerHTML;
+  const wasDisabled = btn.disabled;
+  btn.dataset.busy = "1";
+  btn.disabled = true;
+  btn.innerHTML = `<span class="spinner"></span>${text}`;
+  try {
+    return await fn();
+  } finally {
+    delete btn.dataset.busy;
+    if (!btn.isConnected) return;
+    btn.disabled = wasDisabled;
+    btn.innerHTML = oldHTML;
+  }
+}
+
 /* ---------------- 视图切换 ---------------- */
 const VIEW_META = {
   home: ["智能工作台", "让校园信息，从「看见」到「看懂」，再到「行动」"],
@@ -234,6 +297,11 @@ const VIEW_META = {
 
 function switchView(name, push = true) {
   if (!VIEW_META[name]) return;
+  /* 再次点击当前导航项不应该重新打一遍接口：切视图是有代价的（每个视图都要取数），
+     而用户连点的用意通常是「回到这一页」，不是「刷新」。刚渲染过就不重复渲染，
+     既省请求也避免「骨架→内容」再闪一次；超过刷新窗口后再点才会真正重新取数。 */
+  const VIEW_REFRESH_MS = 15000;
+  const same = state.view === name && Date.now() - (state.renderedAt[name] || 0) < VIEW_REFRESH_MS;
   state.view = name;
   /* aria-current 让读屏能报出「当前是哪个视图」，
      纯视觉的 .active 类对辅助技术不可见。 */
@@ -265,6 +333,9 @@ function switchView(name, push = true) {
     else history.replaceState({ view: name }, "", "#" + name);
   }
 
+  /* 同一视图的重复点击到此为止：滚动复位已经做了，再往下就是重复取数 */
+  if (same) return;
+
   if (name === "home") renderHome();
   if (name === "dashboard") renderDashboard();
   if (name === "notices") renderNotices();
@@ -276,6 +347,8 @@ function switchView(name, push = true) {
   if (name === "qa" && state.qaTab === "chat" && window.innerWidth >= 768) {
     setTimeout(() => $("#qaInput").focus(), 60);
   }
+  /* 记下这次真正取数的时刻，供上面的重复点击判断与后续刷新窗口使用 */
+  state.renderedAt[name] = Date.now();
 }
 
 function viewFromHash() {
@@ -386,7 +459,7 @@ async function renderHome() {
             </div>
             <div class="opp-foot">
               <span class="hint">点击查看详情与原文依据</span>
-              <button class="btn sm" onclick="event.stopPropagation();addTaskFrom(${m.notice.id})">加入任务</button>
+              <button class="btn sm" onclick="event.stopPropagation();addTaskFrom(${m.notice.id}, this)">加入任务</button>
             </div>
           </div>`;
         }).join("")
@@ -417,19 +490,24 @@ async function renderHome() {
   }
 }
 
-async function addTaskFrom(noticeId) {
+async function addTaskFrom(noticeId, btn) {
   const uid = state.currentUser && state.currentUser.id;
   if (!uid) { toast("请先点击右上角头像登录角色账号", true); return; }
-  try {
-    await api(`/api/users/${uid}/tasks`, { method: "POST", body: { notice_id: noticeId } });
-    toast("已加入我的任务");
-    renderHome();
-  } catch (e) { toast(e.message, true); }
+  /* 锁定发起点击的按钮：连点时只会有一次请求落到后端 */
+  await withBusy(btn, "加入中…", async () => {
+    try {
+      await api(`/api/users/${uid}/tasks`, { method: "POST", body: { notice_id: noticeId } });
+      toast("已加入我的任务");
+      renderHome();
+    } catch (e) { toast(e.message, true); }
+  });
 }
 
 /* ---------------- 数据总览（信息治理） ---------------- */
 async function renderDashboard() {
-  $("#kpiGrid").innerHTML = '<div class="card empty">加载中…</div>';
+  /* 与首页同一套骨架：先摆出四张 KPI 的灰块，再原地换成数字，
+     避免「一行加载中」被替换成整块图表时的跳动。 */
+  $("#kpiGrid").innerHTML = `<div class="kpi-row">${skeletonCards(4, 96, "")}</div>`;
   try {
     const d = await api("/api/dashboard/stats");
     state.dashboardCache = d;
@@ -549,7 +627,7 @@ async function renderNotices() {
     keyword: state.keyword, category: state.category,
     genre: state.genre, review: state.review,
   });
-  $("#noticeList").innerHTML = '<div class="card empty">加载中…</div>';
+  $("#noticeList").innerHTML = `${skeletonCards(2, 88, "sk-list")}${skeletonRows(2, "sk-card")}`;
   try {
     const d = await api("/api/notices?" + qs);
     state.total = d.total;
@@ -619,9 +697,9 @@ function applyQuick(q) {
 async function openNotice(id) {
   $("#drawer").classList.add("open");
   $("#drawerMask").classList.add("open");
-  $("#drawerTitle").textContent = "加载中…";
+  $("#drawerTitle").textContent = "正在读取…";
   $("#drawerMeta").textContent = "";
-  $("#drawerBody").innerHTML = '<div class="empty">正在读取通知…</div>';
+  $("#drawerBody").innerHTML = `${skeletonRows(2, "sk-card")}${skeletonCards(2, 72, "sk-grid")}`;
   try {
     const n = await api("/api/notices/" + id);
     state.currentNotice = n;
@@ -893,11 +971,11 @@ function renderDrawer(n) {
   $("#drawerBody").innerHTML = `
     ${analysisHTML}
     <div class="actions">
-      <button class="btn ai sm" onclick="analyzeNotice(${n.id})">${icon("spark")}重新解析</button>
-      <button class="btn sm" onclick="addTask(${n.id})" ${isNews ? 'disabled title="新闻资讯无办理事项"' : ""}>加入待办</button>
+      <button class="btn ai sm" onclick="analyzeNotice(${n.id}, this)">${icon("spark")}重新解析</button>
+      <button class="btn sm" onclick="addTask(${n.id}, this)" ${isNews ? 'disabled title="新闻资讯无办理事项"' : ""}>加入待办</button>
       <button class="btn sm" onclick="toggleCorrect(${n.id})">人工修正</button>
       ${n.source_url ? `<a class="btn sm" href="${esc(n.source_url)}" target="_blank" rel="noopener">查看原文链接</a>` : ""}
-      <button class="btn sm" onclick="removeNotice(${n.id})" style="color:var(--danger);margin-left:auto">删除</button>
+      <button class="btn sm" onclick="removeNotice(${n.id}, this)" style="color:var(--danger);margin-left:auto">删除</button>
     </div>
     <div id="correctForm"></div>
 
@@ -906,16 +984,20 @@ function renderDrawer(n) {
     <div class="content-box">${pretty(n.content)}</div>`;
 }
 
-async function analyzeNotice(id) {
-  toast("正在解析…");
-  try {
-    const n = await api(`/api/notices/${id}/analyze`, { method: "POST" });
-    renderDrawer(n);
-    toast("解析完成");
-    if (state.view === "notices") renderNotices();
-  } catch (e) {
-    toast("解析失败：" + e.message, true);
-  }
+async function analyzeNotice(id, btn) {
+  /* 解析是重活（可能调模型），连点会导致同一通知被并行解析多次 */
+  await withBusy(btn, "解析中…", async () => {
+    try {
+      const n = await api(`/api/notices/${id}/analyze`, { method: "POST" });
+      renderDrawer(n);
+      toast("解析完成");
+      memCache.delete("/api/dashboard/stats");
+      if (state.view === "notices") renderNotices();
+      if (state.view === "dashboard") renderDashboard();
+    } catch (e) {
+      toast("解析失败：" + e.message, true);
+    }
+  });
 }
 
 function toggleCorrect(id) {
@@ -1011,36 +1093,42 @@ async function reviewNotice(id, action) {
   }
 }
 
-async function removeNotice(id) {
+async function removeNotice(id, btn) {
   if (!confirm("确定删除这条通知？相关解析结果与待办会一并删除。")) return;
-  try {
-    await api(`/api/notices/${id}`, { method: "DELETE" });
-    closeDrawer();
-    toast("已删除");
-    // 详情抽屉可从多个视图打开，删除后刷新当前视图，避免统计/列表停留在旧数据。
-    if (state.view === "home") renderHome();
-    if (state.view === "notices") renderNotices();
-    if (state.view === "tasks") renderTasks();
-    if (state.view === "dashboard") renderDashboard();
-    if (state.view === "match") renderMatch();
-  } catch (e) {
-    toast("删除失败：" + e.message, true);
-  }
+  await withBusy(btn, "删除中…", async () => {
+    try {
+      await api(`/api/notices/${id}`, { method: "DELETE" });
+      closeDrawer();
+      toast("已删除");
+      // 详情抽屉可从多个视图打开，删除后刷新当前视图，避免统计/列表停留在旧数据。
+      if (state.view === "home") renderHome();
+      if (state.view === "notices") renderNotices();
+      if (state.view === "tasks") renderTasks();
+      if (state.view === "dashboard") renderDashboard();
+      if (state.view === "match") renderMatch();
+    } catch (e) {
+      toast("删除失败：" + e.message, true);
+    }
+  });
 }
 
-async function addTask(noticeId) {
+async function addTask(noticeId, btn) {
   const uid = state.currentUser && state.currentUser.id;
   if (!uid) { toast("请先点击右上角头像登录角色账号", true); return; }
-  try {
-    await api(`/api/users/${uid}/tasks`, { method: "POST", body: { notice_id: noticeId } });
-    toast("已加入待办");
-    // 详情抽屉可从多个视图打开：加入待办后同步刷新当前视图里依赖待办的内容，
-    // 避免首页待办数、我的任务列表停留在旧数据（与首页「加入任务」入口保持一致）。
-    if (state.view === "home") renderHome();
-    if (state.view === "tasks") renderTasks();
-  } catch (e) {
-    toast(e.message, true);
-  }
+  /* 后端对重复待办会回 409，但用户连点三次仍会看到三条请求与一条报错；
+     这里先锁按钮，把「已经加过了」交给第一次请求的结果说明。 */
+  await withBusy(btn, "加入中…", async () => {
+    try {
+      await api(`/api/users/${uid}/tasks`, { method: "POST", body: { notice_id: noticeId } });
+      toast("已加入待办");
+      // 详情抽屉可从多个视图打开：加入待办后同步刷新当前视图里依赖待办的内容，
+      // 避免首页待办数、我的任务列表停留在旧数据（与首页「加入任务」入口保持一致）。
+      if (state.view === "home") renderHome();
+      if (state.view === "tasks") renderTasks();
+    } catch (e) {
+      toast(e.message, true);
+    }
+  });
 }
 
 /* ---------------- 我的匹配 ---------------- */
@@ -1104,22 +1192,24 @@ async function saveProfile(userId) {
     interests: $$(".interest-chip.on").map((c) => c.dataset.v),
   };
   const btn = $("#pfSave");
-  if (btn) { btn.disabled = true; btn.textContent = "保存中…"; }
-  try {
-    const updated = await api(`/api/users/${userId}`, { method: "PUT", body: payload });
-    const idx = state.users.findIndex((x) => x.id === userId);
-    if (idx >= 0) state.users[idx] = updated;
-    state.currentUser = updated;
-    state.profileEditing = false;
-    refreshIdentityUI();
-    renderLoginRoles();
-    toast("个人信息已保存，匹配已更新");
-    renderMatch();
-    if (state.view === "home") renderHome();
-  } catch (e) {
-    toast(e.message, true);
-    if (btn) { btn.disabled = false; btn.textContent = "保存并重新匹配"; }
-  }
+  /* 保存会连带重算整张匹配结果，重复提交会让结果与画像错位；
+     统一走 withBusy，按钮文案也与其他写操作保持同一种「…中」写法。 */
+  return withBusy(btn, "保存中…", async () => {
+    try {
+      const updated = await api(`/api/users/${userId}`, { method: "PUT", body: payload });
+      const idx = state.users.findIndex((x) => x.id === userId);
+      if (idx >= 0) state.users[idx] = updated;
+      state.currentUser = updated;
+      state.profileEditing = false;
+      refreshIdentityUI();
+      renderLoginRoles();
+      toast("个人信息已保存，匹配已更新");
+      renderMatch();
+      if (state.view === "home") renderHome();
+    } catch (e) {
+      toast(e.message, true);
+    }
+  });
 }
 
 async function renderMatch() {
@@ -1144,6 +1234,10 @@ async function renderMatch() {
   }
 
   renderProfileCard(u);
+
+  /* 匹配结论要等服务端算完七因子，列表先摆骨架，结论出来再原地替换 */
+  $("#matchSummary").textContent = "正在计算匹配…";
+  $("#matchList").innerHTML = skeletonCards(3, 118, "sk-list");
 
   const qs = new URLSearchParams({ level: state.matchLevel, only_open: "true" });
   try {
@@ -1467,7 +1561,7 @@ async function renderMyTimeline() {
     </div>`;
     return;
   }
-  box.innerHTML = '<div class="empty">加载中…</div>';
+  box.innerHTML = skeletonRows(4, "sk-timeline");
   try {
     /* Web 端没有小程序那套票据，登录只是本地选了一个角色，
        所以按 user_id 取数；小程序端仍走 x-token。 */
@@ -1517,6 +1611,12 @@ async function renderTasks() {
   renderMyTimeline();
   const u = state.currentUser || state.users[0];
   if (!u) { $("#taskList").innerHTML = '<div class="card empty">暂无用户</div>'; return; }
+  /* 与其它视图同一套骨架：统计与两张列表先摆灰块，取到数据再原地替换，
+     避免「空列表 → 满列表」时整片区域高度突变。 */
+  $("#taskStats").innerHTML = `<div class="sk-block sk-stats" aria-hidden="true">
+    ${Array.from({ length: 4 }, () => '<div class="skeleton sk-pill"></div>').join("")}</div>`;
+  $("#agendaList").innerHTML = skeletonRows(2, "sk-list");
+  $("#taskList").innerHTML = skeletonRows(3, "sk-list");
   try {
     const [agenda, tasks] = await Promise.all([
       api(`/api/users/${u.id}/agenda?days=30`),
@@ -1575,7 +1675,7 @@ const crawlState = { sources: [], selected: new Set(), result: null, picked: new
 async function renderSources() {
   if (crawlState.loaded) return;
   const box = $("#srcList");
-  box.innerHTML = '<div class="empty">加载中…</div>';
+  box.innerHTML = skeletonRows(3, "sk-sources");
   try {
     const d = await api("/api/sources");
     crawlState.sources = d.sources || [];
@@ -1658,34 +1758,32 @@ async function doCrawl() {
   const ids = Array.from(crawlState.selected);
   if (!ids.length) return toast("请至少选择一个采集栏目", true);
   const btn = $("#btnCrawl");
-  btn.disabled = true;
-  btn.innerHTML = '<span class="spinner"></span>抓取中…';
-  $("#crawlCount").textContent = "抓取中…";
-  try {
-    const d = await api("/api/sources/preview", {
-      method: "POST",
-      body: {
-        source_ids: ids,
-        limit: Number($("#crawlLimit").value) || 6,
-        max_pages: Number($("#crawlPages").value) || 1,
-        incremental: $("#crawlIncremental") ? $("#crawlIncremental").checked : true,
-      },
-    });
-    crawlState.result = d;
-    crawlState.picked = new Set();
-    (d.sources || []).forEach((b) => (b.items || []).forEach((it, i) => {
-      if (!it.duplicate) crawlState.picked.add(b.source.id + "#" + i);
-    }));
-    renderCrawlTable();
-    const failed = (d.summary && d.summary.failed) || [];
-    toast(failed.length ? `抓取完成，${failed.length} 个源失败` : `抓取完成：${d.total} 条`, failed.length > 0);
-  } catch (e) {
-    toast(e.message, true);
-    $("#crawlCount").textContent = "抓取失败";
-  } finally {
-    btn.disabled = false;
-    btn.textContent = "开始抓取";
-  }
+  /* 抓取要挨个访问校方站点，耗时以秒计；不锁按钮时连点会同时跑多轮爬取 */
+  await withBusy(btn, "抓取中…", async () => {
+    $("#crawlCount").textContent = "抓取中…";
+    try {
+      const d = await api("/api/sources/preview", {
+        method: "POST",
+        body: {
+          source_ids: ids,
+          limit: Number($("#crawlLimit").value) || 6,
+          max_pages: Number($("#crawlPages").value) || 1,
+          incremental: $("#crawlIncremental") ? $("#crawlIncremental").checked : true,
+        },
+      });
+      crawlState.result = d;
+      crawlState.picked = new Set();
+      (d.sources || []).forEach((b) => (b.items || []).forEach((it, i) => {
+        if (!it.duplicate) crawlState.picked.add(b.source.id + "#" + i);
+      }));
+      renderCrawlTable();
+      const failed = (d.summary && d.summary.failed) || [];
+      toast(failed.length ? `抓取完成，${failed.length} 个源失败` : `抓取完成：${d.total} 条`, failed.length > 0);
+    } catch (e) {
+      toast(e.message, true);
+      $("#crawlCount").textContent = "抓取失败";
+    }
+  });
 }
 
 async function importCrawl() {
@@ -1704,24 +1802,22 @@ async function importCrawl() {
   if (!items.length) return toast("没有选中的条目", true);
 
   const btn = $("#btnCrawlImport");
-  btn.disabled = true;
-  btn.innerHTML = '<span class="spinner"></span>导入中…';
-  try {
-    const d = await api("/api/sources/import", {
-      method: "POST",
-      body: { items, auto_analyze: $("#crawlAnalyze").checked },
-    });
-    toast(`导入完成：新增 ${d.created} 条，跳过重复 ${d.skipped} 条${d.analyzed ? `，已解析 ${d.analyzed}` : ""}`);
-    crawlState.result = null;
-    crawlState.picked = new Set();
-    $("#crawlTable").innerHTML = '<div class="empty">已导入，可再次抓取以查看新内容</div>';
-    $("#crawlCount").textContent = "尚未抓取";
-  } catch (e) {
-    toast(e.message, true);
-  } finally {
-    btn.disabled = false;
-    btn.textContent = "导入选中";
-  }
+  /* 导入会写入数据库并可能触发逐条解析，重复提交会重复建条目 */
+  await withBusy(btn, "导入中…", async () => {
+    try {
+      const d = await api("/api/sources/import", {
+        method: "POST",
+        body: { items, auto_analyze: $("#crawlAnalyze").checked },
+      });
+      toast(`导入完成：新增 ${d.created} 条，跳过重复 ${d.skipped} 条${d.analyzed ? `，已解析 ${d.analyzed}` : ""}`);
+      crawlState.result = null;
+      crawlState.picked = new Set();
+      $("#crawlTable").innerHTML = '<div class="empty">已导入，可再次抓取以查看新内容</div>';
+      $("#crawlCount").textContent = "尚未抓取";
+    } catch (e) {
+      toast(e.message, true);
+    }
+  });
 }
 
 /* ---------------- 录入弹窗 ---------------- */
@@ -1736,51 +1832,51 @@ function closeModal() { $("#modalMask").classList.remove("open"); }
 
 async function submitModal() {
   const btn = $("#modalSubmit");
-  btn.disabled = true;
-  btn.innerHTML = '<span class="spinner"></span>处理中…';
-  try {
-    if (modalTab === "manual") {
-      const body = {
-        title: $("#inTitle").value.trim(),
-        content: $("#inContent").value.trim(),
-        publish_time: $("#inPublish").value,
-        source_name: $("#inSource").value.trim(),
-      };
-      if (body.title.length < 2) throw new Error("请填写通知标题");
-      if (body.content.length < 10) throw new Error("请粘贴通知正文");
-      const n = await api("/api/notices", { method: "POST", body });
-      await api(`/api/notices/${n.id}/analyze`, { method: "POST" });
-      toast("录入并解析完成");
-      closeModal();
-      $("#inTitle").value = ""; $("#inContent").value = ""; $("#inSource").value = "";
-      if (state.view === "notices") renderNotices(); else switchView("notices");
-      openNotice(n.id);
-    } else {
-      const url = $("#inUrl").value.trim();
-      if (!url) throw new Error("请填写网页链接");
-      const n = await api("/api/notices/ingest/url", { method: "POST", body: { url, auto_analyze: true } });
-      toast("采集并解析完成");
-      closeModal();
-      if (state.view === "notices") renderNotices(); else switchView("notices");
-      openNotice(n.id);
+  /* 录入是「建通知 + 立刻解析」两步写操作，连点会重复建条目 */
+  await withBusy(btn, "处理中…", async () => {
+    try {
+      if (modalTab === "manual") {
+        const body = {
+          title: $("#inTitle").value.trim(),
+          content: $("#inContent").value.trim(),
+          publish_time: $("#inPublish").value,
+          source_name: $("#inSource").value.trim(),
+        };
+        if (body.title.length < 2) throw new Error("请填写通知标题");
+        if (body.content.length < 10) throw new Error("请粘贴通知正文");
+        const n = await api("/api/notices", { method: "POST", body });
+        await api(`/api/notices/${n.id}/analyze`, { method: "POST" });
+        toast("录入并解析完成");
+        closeModal();
+        $("#inTitle").value = ""; $("#inContent").value = ""; $("#inSource").value = "";
+        if (state.view === "notices") renderNotices(); else switchView("notices");
+        openNotice(n.id);
+      } else {
+        const url = $("#inUrl").value.trim();
+        if (!url) throw new Error("请填写网页链接");
+        const n = await api("/api/notices/ingest/url", { method: "POST", body: { url, auto_analyze: true } });
+        toast("采集并解析完成");
+        closeModal();
+        if (state.view === "notices") renderNotices(); else switchView("notices");
+        openNotice(n.id);
+      }
+    } catch (e) {
+      toast(e.message, true);
     }
-  } catch (e) {
-    toast(e.message, true);
-  } finally {
-    btn.disabled = false;
-    btn.textContent = "录入并解析";
-  }
+  });
 }
 
-async function batchAnalyze() {
-  toast("正在批量解析…");
-  try {
-    const d = await api("/api/notices/batch-analyze?only_unparsed=true", { method: "POST" });
-    toast(`批量解析完成：成功 ${d.success} / ${d.total}`);
-    if (state.view === "notices") renderNotices(); else renderDashboard();
-  } catch (e) {
-    toast(e.message, true);
-  }
+async function batchAnalyze(btn) {
+  /* 批量解析可能在服务端跑一段时间，未锁定时连点会并发触发多次 */
+  await withBusy(btn, "批量解析中…", async () => {
+    try {
+      const d = await api("/api/notices/batch-analyze?only_unparsed=true", { method: "POST" });
+      toast(`批量解析完成：成功 ${d.success} / ${d.total}`);
+      if (state.view === "notices") renderNotices(); else renderDashboard();
+    } catch (e) {
+      toast(e.message, true);
+    }
+  });
 }
 
 /* ---------------- AI 解析实验室（不入库，展示四层保护） ---------------- */
@@ -1985,8 +2081,8 @@ const PLATFORM_META = {
 
 async function renderMobile() {
   $("#mobileKpi").innerHTML = '<div class="kpi skeleton"></div>'.repeat(4);
-  $("#platformList").innerHTML = '<div class="empty">加载中…</div>';
-  $("#pushBody").innerHTML = '<div class="empty">加载中…</div>';
+  $("#platformList").innerHTML = skeletonCards(2, 84, "sk-grid");
+  $("#pushBody").innerHTML = skeletonRows(3, "sk-push");
 
   try {
     const s = await api("/api/wechat/status");
@@ -2067,7 +2163,7 @@ const RESOLUTION_TEXT = {
 };
 
 async function renderConflicts() {
-  $("#conflictList").innerHTML = '<div class="card empty">加载中…</div>';
+  $("#conflictList").innerHTML = `${skeletonCards(3, 92, "sk-list")}`;
   try {
     const q = [];
     if (state.conflictSeverity) q.push(`severity=${state.conflictSeverity}`);
@@ -2218,7 +2314,7 @@ function bindEvents() {
     switchView(b.dataset.view);
   }));
   $("#sheetAddNotice").addEventListener("click", () => { closeSheet(); openModal(); });
-  $("#sheetBatchAnalyze").addEventListener("click", () => { closeSheet(); batchAnalyze(); });
+  $("#sheetBatchAnalyze").addEventListener("click", (e) => { closeSheet(); batchAnalyze(e.currentTarget); });
   $("#btnAiProbe").addEventListener("click", probeAi);
   const qaChat = $("#qaChat");
   if (qaChat) WELCOME_HTML = qaChat.innerHTML;
@@ -2255,7 +2351,7 @@ function bindEvents() {
   $("#drawerClose").addEventListener("click", closeDrawer);
   $("#drawerMask").addEventListener("click", closeDrawer);
   $("#btnAddNotice").addEventListener("click", openModal);
-  $("#btnBatchAnalyze").addEventListener("click", batchAnalyze);
+  $("#btnBatchAnalyze").addEventListener("click", (e) => batchAnalyze(e.currentTarget));
   $("#btnCrawl").addEventListener("click", doCrawl);
   $("#btnCrawlImport").addEventListener("click", importCrawl);
   $("#btnBell").addEventListener("click", () => switchView("tasks"));
